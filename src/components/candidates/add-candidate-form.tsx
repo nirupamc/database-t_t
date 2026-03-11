@@ -1,0 +1,449 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Camera,
+  Upload,
+  X,
+  MapPin,
+} from "lucide-react";
+import { recruiters } from "@/lib/data";
+
+// ── Zod schema ──
+const candidateSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().optional(),
+  linkedIn: z
+    .string()
+    .min(1, "LinkedIn URL is required")
+    .refine(
+      (val) => val.includes("linkedin.com") || val.startsWith("http"),
+      "Please enter a valid LinkedIn URL"
+    ),
+  yearsOfExperience: z.string().optional(),
+  location: z.string().optional(),
+  noticePeriod: z.string().optional(),
+  expectedCtc: z.string().optional(),
+  assignedRecruiter: z.string().optional(),
+  quickNotes: z.string().optional(),
+});
+
+type CandidateFormValues = z.infer<typeof candidateSchema>;
+
+// ── Skill suggestions ──
+const skillSuggestions = [
+  "Java", "Python", "React", "Node.js", "Salesforce", "AWS", "Docker",
+  "Kubernetes", "Spring Boot", "TypeScript", "Apex", "Tailwind CSS",
+  "DevOps", "REST APIs", "GraphQL", "MongoDB", "PostgreSQL", "DynamoDB",
+];
+
+/** Add New Candidate form */
+export function AddCandidateForm() {
+  const router = useRouter();
+  const [skills, setSkills] = useState<string[]>([]);
+  const [skillInput, setSkillInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+  } = useForm<CandidateFormValues>({
+    resolver: zodResolver(candidateSchema),
+    defaultValues: {
+      noticePeriod: "Immediate",
+    },
+  });
+
+  // Add a skill tag
+  const addSkill = (skill: string) => {
+    const trimmed = skill.trim();
+    if (trimmed && !skills.includes(trimmed)) {
+      setSkills([...skills, trimmed]);
+    }
+    setSkillInput("");
+    setShowSuggestions(false);
+  };
+
+  // Remove skill tag
+  const removeSkill = (skill: string) => {
+    setSkills(skills.filter((s) => s !== skill));
+  };
+
+  // Handle skill input keydown
+  const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addSkill(skillInput);
+    }
+  };
+
+  // Filtered suggestions
+  const filtered = skillSuggestions.filter(
+    (s) =>
+      s.toLowerCase().includes(skillInput.toLowerCase()) &&
+      !skills.includes(s)
+  );
+
+  // Submit
+  const onSubmit = (data: CandidateFormValues) => {
+    // In a real app, this would POST to an API
+    console.log("Creating candidate:", { ...data, skills });
+    toast.success("Candidate created successfully!", {
+      description: `${data.name} has been added to the pipeline.`,
+    });
+    router.push("/dashboard");
+  };
+
+  const noticePeriod = watch("noticePeriod");
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto">
+      {/* Page header */}
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Add New Candidate</h1>
+        <p className="text-muted-foreground">
+          Register a new talent profile to the recruitment pipeline.
+        </p>
+      </div>
+
+      {/* Step indicator */}
+      <Card className="bg-primary/5 border-primary/20">
+        <CardContent className="py-3 px-5">
+          <p className="text-sm font-semibold text-primary">Profile Setup</p>
+        </CardContent>
+      </Card>
+
+      {/* ── Personal Information ── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>Contact details and identity</CardDescription>
+            </div>
+            {/* Upload Photo placeholder */}
+            <div className="flex flex-col items-center gap-1">
+              <Avatar className="h-16 w-16 border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors">
+                <AvatarFallback className="bg-muted text-muted-foreground">
+                  <Camera className="h-6 w-6" />
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-xs text-muted-foreground">Upload Photo <span className="text-orange-500">(optional)</span></span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Full Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="name">
+                Full Name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="name"
+                placeholder="John Doe"
+                {...register("name")}
+              />
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label htmlFor="email">
+                Email Address <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="john.doe@example.com"
+                {...register("email")}
+              />
+              {errors.email && (
+                <p className="text-xs text-destructive">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">
+                Phone Number <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="phone"
+                placeholder="+1 (555) 000-0000"
+                {...register("phone")}
+              />
+            </div>
+
+            {/* LinkedIn */}
+            <div className="space-y-1.5">
+              <Label htmlFor="linkedIn">
+                LinkedIn URL <span className="text-destructive">*</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="linkedIn"
+                  placeholder="linkedin.com/in/johndoe"
+                  className="pl-8"
+                  {...register("linkedIn")}
+                />
+                <span className="absolute left-2.5 top-2 text-muted-foreground text-sm">🔗</span>
+              </div>
+              {errors.linkedIn && (
+                <p className="text-xs text-destructive">{errors.linkedIn.message}</p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Professional Snapshot ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Professional Snapshot</CardTitle>
+          <CardDescription>Resume, experience and expectations</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Resume Upload */}
+          <div className="space-y-1.5">
+            <Label>
+              Resume Upload <span className="text-orange-500 text-xs">(optional)</span>
+            </Label>
+            <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 cursor-pointer hover:border-primary/50 transition-colors">
+              <div className="text-center">
+                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm font-medium text-muted-foreground">
+                  Drag and drop resume here
+                </p>
+                <p className="text-xs text-muted-foreground">PDF or DOCX up to 10MB</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Skills Tags */}
+          <div className="space-y-1.5">
+            <Label>
+              Skills Tags <span className="text-orange-500 text-xs">(optional)</span>
+            </Label>
+            <div className="flex flex-wrap items-center gap-1.5 p-2 border rounded-md min-h-[42px] bg-background">
+              {skills.map((skill) => (
+                <Badge key={skill} className="bg-primary/10 text-primary border-primary/20 gap-1">
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill(skill)}
+                    className="hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </Badge>
+              ))}
+              <div className="relative flex-1 min-w-[200px]">
+                <input
+                  type="text"
+                  value={skillInput}
+                  onChange={(e) => {
+                    setSkillInput(e.target.value);
+                    setShowSuggestions(true);
+                  }}
+                  onKeyDown={handleSkillKeyDown}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  placeholder="e.g. Java, Python, Salesforce, React, Node.js, AWS, DevOps..."
+                  className="w-full border-none outline-none text-sm bg-transparent placeholder:text-muted-foreground"
+                />
+                {/* Suggestions dropdown */}
+                {showSuggestions && skillInput && filtered.length > 0 && (
+                  <div className="absolute top-8 left-0 z-50 w-64 bg-popover border rounded-md shadow-md max-h-40 overflow-auto">
+                    {filtered.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => addSkill(s)}
+                        className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent transition-colors"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Experience + Location row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="yearsOfExperience">
+                Years of Experience <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="yearsOfExperience"
+                type="number"
+                placeholder="5"
+                {...register("yearsOfExperience")}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="location">
+                Location <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <div className="relative">
+                <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="location"
+                  placeholder="e.g. New York, USA"
+                  className="pl-8"
+                  {...register("location")}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Notice Period + Expected CTC */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>
+                Notice Period <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Select
+                value={noticePeriod}
+                onValueChange={(val) => setValue("noticePeriod", val)}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Immediate">Immediate</SelectItem>
+                  <SelectItem value="15 Days">15 Days</SelectItem>
+                  <SelectItem value="30 Days">30 Days</SelectItem>
+                  <SelectItem value="60 Days">60 Days</SelectItem>
+                  <SelectItem value="90 Days">90 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="expectedCtc">
+                Expected CTC (Annual) <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <div className="flex gap-2">
+                <Select defaultValue="INR">
+                  <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INR">₹</SelectItem>
+                    <SelectItem value="USD">$</SelectItem>
+                    <SelectItem value="EUR">€</SelectItem>
+                    <SelectItem value="GBP">£</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  id="expectedCtc"
+                  placeholder="12,00,000"
+                  className="flex-1"
+                  {...register("expectedCtc")}
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Recruitment Details ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recruitment Details</CardTitle>
+          <CardDescription>Internal assignment and notes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Assigned Recruiter */}
+          <div className="space-y-1.5">
+            <Label>
+              Assigned Recruiter <span className="text-orange-500 text-xs">(optional)</span>
+            </Label>
+            <Select
+              value={watch("assignedRecruiter")}
+              onValueChange={(val) => setValue("assignedRecruiter", val)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a recruiter" />
+              </SelectTrigger>
+              <SelectContent>
+                {recruiters.map((r) => (
+                  <SelectItem key={r.id} value={r.name}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                        {r.name.split(" ").map((n) => n[0]).join("")}
+                      </div>
+                      {r.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Quick Notes */}
+          <div className="space-y-1.5">
+            <Label htmlFor="quickNotes">
+              Quick Notes <span className="text-orange-500 text-xs">(optional)</span>
+            </Label>
+            <Textarea
+              id="quickNotes"
+              placeholder="Add any initial feedback or specific requirements..."
+              className="min-h-[100px]"
+              {...register("quickNotes")}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Actions ── */}
+      <div className="flex items-center justify-center gap-4 pb-8">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.push("/dashboard")}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="bg-emerald-600 hover:bg-emerald-700 px-8"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Creating..." : "Create Candidate"}
+        </Button>
+      </div>
+
+      <p className="text-center text-xs text-muted-foreground pb-4">
+        Next: Add job applications to this profile
+      </p>
+    </form>
+  );
+}
