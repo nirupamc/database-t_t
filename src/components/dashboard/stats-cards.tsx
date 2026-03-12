@@ -1,9 +1,17 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, Calendar, Gift } from "lucide-react";
-import { dashboardStats } from "@/lib/data";
+
+interface DashboardStatsView {
+  activeCandidates: number;
+  activeCandidatesChange: string;
+  interviewsThisWeek: number;
+  interviewsNote: string;
+  offersPending: number;
+  offersNote: string;
+}
 
 /** Stats row on the dashboard */
-export function StatsCards() {
+export function StatsCards({ dashboardStats }: { dashboardStats: DashboardStatsView }) {
   const stats = [
     {
       title: "Active Candidates",

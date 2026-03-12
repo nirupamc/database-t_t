@@ -1,26 +1,34 @@
 "use client";
 
 import { Bell, LogOut } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { clearAuthSession } from "@/lib/auth";
 
 export function AdminTopBar() {
+  const { data: session } = useSession();
   const router = useRouter();
 
   const handleLogout = () => {
-    clearAuthSession();
-    router.push("/login");
+    signOut({ callbackUrl: "/login" });
   };
+
+  const name = session?.user?.name ?? "Admin";
+  const initials = name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="w-10 lg:hidden" />
       <div className="hidden lg:block">
         <p className="text-sm text-muted-foreground">
-          Welcome, <span className="font-semibold text-foreground">Admin Faizan</span>
+          Welcome, <span className="font-semibold text-foreground">Admin {name.split(" ")[0]}</span>
         </p>
       </div>
 
@@ -35,7 +43,7 @@ export function AdminTopBar() {
 
         <Avatar className="h-9 w-9 border-2 border-primary/20">
           <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">
-            AF
+            {initials}
           </AvatarFallback>
         </Avatar>
 

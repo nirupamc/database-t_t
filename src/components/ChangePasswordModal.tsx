@@ -35,7 +35,8 @@ interface ChangePasswordModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   employeeName: string;
-  onPasswordChanged?: (password: string) => void;
+  onPasswordChanged?: (password: string) => Promise<void> | void;
+  submitting?: boolean;
 }
 
 export function ChangePasswordModal({
@@ -43,6 +44,7 @@ export function ChangePasswordModal({
   onOpenChange,
   employeeName,
   onPasswordChanged,
+  submitting = false,
 }: ChangePasswordModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -59,7 +61,7 @@ export function ChangePasswordModal({
 
   const onSubmit = async (values: FormValues) => {
     await new Promise((resolve) => setTimeout(resolve, 400));
-    onPasswordChanged?.(values.password);
+    await onPasswordChanged?.(values.password);
     toast.success("Password changed", {
       description: `${employeeName}'s password has been reset.`,
     });
@@ -128,8 +130,8 @@ export function ChangePasswordModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Update Password"}
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting || submitting}>
+              {isSubmitting || submitting ? "Saving..." : "Update Password"}
             </Button>
           </DialogFooter>
         </form>

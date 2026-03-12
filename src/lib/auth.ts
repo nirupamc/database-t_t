@@ -1,24 +1,89 @@
-export type UserRole = "admin" | "recruiter";
+import NextAuth, { type NextAuthConfig } from "next-auth";
+import Credentials from "next-auth/providers/credentials";
 
-export const AUTH_COOKIE_NAME = "hireflow-role";
+import { prisma } from "@/lib/prisma";
+import { verifyPassword } from "@/lib/password";
 
-export function setAuthSession(role: UserRole) {
-  if (typeof window === "undefined") return;
+export const authConfig = {
+  pages: {
+    signIn: "/login",
+  },
+  session: {
+    strategy: "jwt",
+  },
+  providers: [
+    Credentials({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        try {
+          const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+          const password = typeof credentials?.password === "string" ? credentials.password : "";
 
-  localStorage.setItem("hireflow-role", role);
-  const maxAge = 60 * 60 * 24 * 7;
-  document.cookie = `${AUTH_COOKIE_NAME}=${role}; path=/; max-age=${maxAge}; samesite=lax`;
+          if (!email || !password) {
+            return null;
+          }
+
+          const recruiter = await prisma.recruiter.findUnique({
+            where: { email },
+          });
+
+          if (!recruiter) {
+            return null;
+          }
+
+          const isPasswordValid = await verifyPassword(password, recruiter.password);
+          if (!isPasswordValid) {
+            return null;
+          }
+
+          return {
+            id: recruiter.id,
+            email: recruiter.email,
+            name: recruiter.name,
+            role: recruiter.role === "ADMIN" ? "admin" : "recruiter",
+          };
+        } catch (error) {
+          console.error("[Auth] Login error:", error);
+          // Return null instead of throwing so NextAuth shows a generic error
+          // If DB is offline this gives: "Invalid credentials" vs a 500 crash
+          return null;
+        }
+      },
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, user }) {
+      if (user) {
+        token.role = (user as { role: "admin" | "recruiter" }).role;
+      }
+      if (!token.role) {
+        token.role = "recruiter";
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub ?? "";
+        session.user.role = (token.role as "admin" | "recruiter" | undefined) ?? "recruiter";
+      }
+      return session;
+    },
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+} satisfies NextAuthConfig;
+
+export const { auth, handlers } = NextAuth(authConfig);
+
+export async function getCurrentSession() {
+  return auth();
 }
 
-export function clearAuthSession() {
-  if (typeof window === "undefined") return;
-
-  localStorage.removeItem("hireflow-role");
-  document.cookie = `${AUTH_COOKIE_NAME}=; path=/; max-age=0; samesite=lax`;
+export async function getCurrentUser() {
+  const session = await auth();
+  return session?.user ?? null;
 }
 
-export function getClientRole(): UserRole | null {
-  if (typeof window === "undefined") return null;
-  const role = localStorage.getItem("hireflow-role");
-  return role === "admin" || role === "recruiter" ? role : null;
-}

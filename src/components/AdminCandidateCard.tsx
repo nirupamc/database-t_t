@@ -6,10 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getCandidateMetrics, type CandidateRecord } from "@/lib/fakeData";
+import { getAdminCandidateMetrics, type AdminCandidateView } from "@/lib/admin-mappers";
 
 interface AdminCandidateCardProps {
-  candidate: CandidateRecord;
+  candidate: AdminCandidateView;
   onViewDetails: (candidateId: string) => void;
 }
 
@@ -30,7 +30,7 @@ function getStatusVariant(status: string) {
 }
 
 export function AdminCandidateCard({ candidate, onViewDetails }: AdminCandidateCardProps) {
-  const metrics = getCandidateMetrics(candidate);
+  const metrics = getAdminCandidateMetrics(candidate);
   const initials = candidate.name
     .split(" ")
     .map((segment) => segment[0])

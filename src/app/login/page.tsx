@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +21,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { setAuthSession } from "@/lib/auth";
 
 const schema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -46,20 +46,27 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    const result = await signIn("credentials", {
+      email: values.email,
+      password: values.password,
+      redirect: false,
+    });
 
-    const isAdmin = values.email.toLowerCase().endsWith("@admin.com");
-
-    if (isAdmin) {
-      setAuthSession("admin");
-      toast.success("Admin login successful");
-      router.push("/admin");
+    if (!result || result.error) {
+      console.error("[Login] signIn error:", result?.error);
+      toast.error("Invalid credentials", {
+        description: result?.error === "Configuration"
+          ? "Database may be offline. Ensure 'npx prisma dev' is running."
+          : "Please check your email and password.",
+      });
       return;
     }
 
-    setAuthSession("recruiter");
-    toast.success("Employee login successful");
-    router.push("/dashboard");
+    const session = await getSession();
+    const role = session?.user?.role;
+
+    toast.success("Login successful");
+    router.push(role === "admin" ? "/admin" : "/dashboard");
   };
 
   return (
@@ -68,7 +75,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl">Login to Recruitment Hub</CardTitle>
           <CardDescription>
-            Use any `@admin.com` email for admin access, otherwise recruiter login
+            Use your registered company credentials to continue
           </CardDescription>
         </CardHeader>
 

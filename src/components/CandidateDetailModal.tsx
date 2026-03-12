@@ -27,18 +27,23 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getCandidateMetrics, type ApplicationStatus, type CandidateRecord, type RoundStatus } from "@/lib/fakeData";
+import {
+  getAdminCandidateMetrics,
+  type AdminCandidateApplicationStatus,
+  type AdminCandidateView,
+  type AdminRoundStatus,
+} from "@/lib/admin-mappers";
 
 interface CandidateDetailModalProps {
-  candidate: CandidateRecord | null;
+  candidate: AdminCandidateView | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  recruiterOptions: string[];
-  onDelete: (candidateId: string) => void;
-  onReassign: (candidateId: string, recruiter: string) => void;
+  recruiterOptions: Array<{ id: string; name: string }>;
+  onDelete: (candidateId: string) => Promise<void>;
+  onReassign: (candidateId: string, recruiterId: string) => Promise<void>;
 }
 
-function getApplicationVariant(status: ApplicationStatus) {
+function getApplicationVariant(status: AdminCandidateApplicationStatus) {
   if (status === "Placed") {
     return "success" as const;
   }
@@ -47,14 +52,14 @@ function getApplicationVariant(status: ApplicationStatus) {
     return "destructive" as const;
   }
 
-  if (status === "Offer" || status === "Interviewing") {
+  if (status === "Offer Extended" || status === "Interview Scheduled") {
     return "info" as const;
   }
 
   return "warning" as const;
 }
 
-function getRoundVariant(status: RoundStatus) {
+function getRoundVariant(status: AdminRoundStatus) {
   if (status === "Cleared") {
     return "success" as const;
   }
@@ -80,10 +85,11 @@ export function CandidateDetailModal({
 }: CandidateDetailModalProps) {
   const [selectedRecruiter, setSelectedRecruiter] = useState("");
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (candidate) {
-      setSelectedRecruiter(candidate.assignedRecruiter);
+      setSelectedRecruiter(candidate.recruiterId);
     }
   }, [candidate]);
 
@@ -91,7 +97,7 @@ export function CandidateDetailModal({
     return null;
   }
 
-  const metrics = getCandidateMetrics(candidate);
+  const metrics = getAdminCandidateMetrics(candidate);
   const initials = candidate.name
     .split(" ")
     .map((part) => part[0])
@@ -334,17 +340,22 @@ export function CandidateDetailModal({
                       </SelectTrigger>
                       <SelectContent>
                         {recruiterOptions.map((recruiter) => (
-                          <SelectItem key={recruiter} value={recruiter}>
-                            {recruiter}
+                          <SelectItem key={recruiter.id} value={recruiter.id}>
+                            {recruiter.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <Button
                       className="w-full bg-blue-600 hover:bg-blue-700"
-                      onClick={() => {
-                        onReassign(candidate.id, selectedRecruiter);
-                        toast.success(`Recruiter reassigned to ${selectedRecruiter}`);
+                      disabled={submitting}
+                      onClick={async () => {
+                        try {
+                          setSubmitting(true);
+                          await onReassign(candidate.id, selectedRecruiter);
+                        } finally {
+                          setSubmitting(false);
+                        }
                       }}
                     >
                       Save Assignment
@@ -375,11 +386,16 @@ export function CandidateDetailModal({
             </Button>
             <Button
               variant="destructive"
-              onClick={() => {
-                onDelete(candidate.id);
-                setConfirmDeleteOpen(false);
-                onOpenChange(false);
-                toast.success("Candidate deleted");
+              disabled={submitting}
+              onClick={async () => {
+                try {
+                  setSubmitting(true);
+                  await onDelete(candidate.id);
+                  setConfirmDeleteOpen(false);
+                  onOpenChange(false);
+                } finally {
+                  setSubmitting(false);
+                }
               }}
             >
               Delete Candidate

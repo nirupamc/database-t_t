@@ -27,7 +27,7 @@ import {
   X,
   MapPin,
 } from "lucide-react";
-import { recruiters } from "@/lib/data";
+import { createCandidateAction } from "@/actions/candidates";
 
 // ── Zod schema ──
 const candidateSchema = z.object({
@@ -51,6 +51,12 @@ const candidateSchema = z.object({
 
 type CandidateFormValues = z.infer<typeof candidateSchema>;
 
+interface RecruiterOption {
+  id: string;
+  name: string;
+  email: string;
+}
+
 // ── Skill suggestions ──
 const skillSuggestions = [
   "Java", "Python", "React", "Node.js", "Salesforce", "AWS", "Docker",
@@ -59,7 +65,7 @@ const skillSuggestions = [
 ];
 
 /** Add New Candidate form */
-export function AddCandidateForm() {
+export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[] }) {
   const router = useRouter();
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
@@ -109,13 +115,38 @@ export function AddCandidateForm() {
   );
 
   // Submit
-  const onSubmit = (data: CandidateFormValues) => {
-    // In a real app, this would POST to an API
-    console.log("Creating candidate:", { ...data, skills });
-    toast.success("Candidate created successfully!", {
-      description: `${data.name} has been added to the pipeline.`,
-    });
-    router.push("/dashboard");
+  const onSubmit = async (data: CandidateFormValues) => {
+    try {
+      const selectedRecruiter = recruiters.find((recruiter) => recruiter.name === data.assignedRecruiter);
+
+      if (!selectedRecruiter) {
+        toast.error("Please select a recruiter");
+        return;
+      }
+
+      await createCandidateAction({
+        fullName: data.name,
+        email: data.email,
+        phone: data.phone || "NA",
+        personalLinkedIn: data.linkedIn.startsWith("http") ? data.linkedIn : `https://${data.linkedIn}`,
+        profilePhotoUrl: "",
+        resumeUrl: "",
+        skills,
+        experienceYears: Number(data.yearsOfExperience || 0),
+        location: data.location || "Unknown",
+        noticePeriod: data.noticePeriod || "Immediate",
+        expectedCTC: data.expectedCtc || "TBD",
+        status: "ACTIVE",
+        recruiterId: selectedRecruiter.id,
+      });
+
+      toast.success("Candidate created successfully!", {
+        description: `${data.name} has been added to the pipeline.`,
+      });
+      router.push("/dashboard/candidates");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create candidate");
+    }
   };
 
   const noticePeriod = watch("noticePeriod");

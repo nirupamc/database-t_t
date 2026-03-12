@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+}
+
+enum CandidateStatus {
+  ACTIVE
+  ON_HOLD
+  PLACED
+  REJECTED
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW_SCHEDULED
+  FEEDBACK_RECEIVED
+  OFFER_EXTENDED
+  PLACED
+  REJECTED
+  ON_HOLD
+}
+
+enum RoundStatus {
+  PENDING
+  CLEARED
+  RESCHEDULED
+  FAILED
+}
+
+model Recruiter {
+  id              String      @id @default(cuid())
+  name            String
+  email           String      @unique
+  phone           String
+  password        String
+  role            UserRole    @default(RECRUITER)
+  profilePhotoUrl String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  candidates      Candidate[]
+
+  @@index([role])
+}
+
+model Candidate {
+  id              String          @id @default(cuid())
+  fullName        String
+  email           String          @unique
+  phone           String
+  personalLinkedIn String
+  profilePhotoUrl String?
+  resumeUrl       String?
+  skills          String[]
+  experienceYears Int
+  location        String
+  noticePeriod    String
+  expectedCTC     String
+  status          CandidateStatus @default(ACTIVE)
+  recruiterId     String
+  addedBy         String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  recruiter       Recruiter       @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  applications    Application[]
+
+  @@index([recruiterId])
+  @@index([status])
+}
+
+model Application {
+  id          String            @id @default(cuid())
+  jobTitle    String
+  company     String
+  jobUrl      String
+  source      String
+  techTags    String[]
+  appliedDate DateTime
+  status      ApplicationStatus @default(APPLIED)
+  candidateId String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  rounds      Round[]
+
+  @@index([candidateId])
+  @@index([status])
+}
+
+model Round {
+  id            String      @id @default(cuid())
+  roundType     String
+  date          DateTime
+  time          String
+  timezone      String
+  duration      String
+  mode          String
+  vcReceiver    String
+  frontend      Boolean     @default(false)
+  lipsync       Boolean     @default(false)
+  feedback      String?
+  roundStatus   RoundStatus @default(PENDING)
+  applicationId String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId])
+}
