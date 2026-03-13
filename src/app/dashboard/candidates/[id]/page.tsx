@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
-import { candidates } from "@/lib/data";
 import { CandidateProfile } from "@/components/candidates/candidate-profile";
+import { getCurrentSession } from "@/lib/auth";
+import { mapCandidateToView } from "@/lib/mappers";
+import { prisma } from "@/lib/prisma";
 
 /** Candidate detail page – /dashboard/candidates/[id] */
 export default async function CandidatePage({
@@ -8,17 +10,29 @@ export default async function CandidatePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const session = await getCurrentSession();
+  if (!session?.user) {
+    notFound();
+  }
+
   const { id } = await params;
-  const candidate = candidates.find((c) => c.id === id);
+  const candidate = await prisma.candidate.findUnique({
+    where: { id },
+    include: {
+      recruiter: true,
+      applications: {
+        include: { rounds: true },
+      },
+    },
+  });
 
   if (!candidate) {
     notFound();
   }
 
-  return <CandidateProfile candidate={candidate} />;
-}
+  if (session.user.role !== "admin" && candidate.recruiterId !== session.user.id) {
+    notFound();
+  }
 
-/** Generate static params for all known candidates */
-export function generateStaticParams() {
-  return candidates.map((c) => ({ id: c.id }));
+  return <CandidateProfile candidate={mapCandidateToView(candidate)} />;
 }

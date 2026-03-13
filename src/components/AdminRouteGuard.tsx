@@ -1,19 +1,26 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-import { getClientRole } from "@/lib/auth";
-
 export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    const role = getClientRole();
-    if (role !== "admin") {
+    if (status === "loading") {
+      return;
+    }
+
+    if (!session || session.user.role !== "admin") {
       router.replace("/login");
     }
-  }, [router]);
+  }, [router, session, status]);
+
+  if (status === "loading") {
+    return null;
+  }
 
   return <>{children}</>;
 }

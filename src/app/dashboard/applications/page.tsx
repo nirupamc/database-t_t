@@ -1,21 +1,51 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { candidates } from "@/lib/data";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { redirect } from "next/navigation";
+import { getCurrentSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 /** All Applications page – /dashboard/applications */
-export default function ApplicationsPage() {
-  // Flatten all applications across candidates
-  const allApps = candidates.flatMap((c) =>
-    c.applications.map((app) => ({ ...app, candidateId: c.id, candidateName: c.name }))
-  );
+export default async function ApplicationsPage() {
+  const session = await getCurrentSession();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const applications = await prisma.application.findMany({
+    where:
+      session.user.role === "admin"
+        ? {}
+        : {
+            candidate: {
+              recruiterId: session.user.id,
+            },
+          },
+    include: {
+      candidate: true,
+    },
+    orderBy: { appliedDate: "desc" },
+  });
+
+  const allApps = applications.map((app) => ({
+    id: app.id,
+    jobTitle: app.jobTitle,
+    company: app.company,
+    jobPostingUrl: app.jobUrl,
+    status: app.status.replaceAll("_", " "),
+    workMode: "Hybrid",
+    tags: app.techTags,
+    nextAction: undefined,
+    candidateId: app.candidateId,
+    candidateName: app.candidate.fullName,
+  }));
 
   function statusVariant(status: string) {
-    if (status.includes("Interview") || status === "In Interview") return "info" as const;
-    if (status === "Offer Received" || status === "Offer Stage") return "success" as const;
-    if (status === "Rejected") return "destructive" as const;
+    if (status.includes("INTERVIEW") || status === "In Interview") return "info" as const;
+    if (status.includes("OFFER") || status === "PLACED") return "success" as const;
+    if (status.includes("REJECTED")) return "destructive" as const;
     return "warning" as const;
   }
 

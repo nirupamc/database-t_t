@@ -123,16 +123,16 @@ export function EmployeeTable({ employees, onAddEmployee }: EmployeeTableProps) 
       <AddEmployeeModal
         open={showAddModal}
         onOpenChange={setShowAddModal}
-        onAddEmployee={(employee) =>
+        onAddEmployee={async (employee) =>
           onAddEmployee({
-            id: employee.id,
+            id: `emp-${Date.now()}`,
             name: employee.name,
             email: employee.email,
-            role: employee.role,
-            assignedCandidates: employee.performance.totalAssignedCandidates,
-            totalApplications: employee.performance.totalApplicationsSubmitted,
-            totalPlacements: employee.performance.totalPlacements,
-            lastActivityDate: employee.lastActivityDate,
+            role: "Recruiter",
+            assignedCandidates: 0,
+            totalApplications: 0,
+            totalPlacements: 0,
+            lastActivityDate: new Date().toISOString().split("T")[0],
           })
         }
       />

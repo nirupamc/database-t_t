@@ -45,6 +45,7 @@ import {
   type RoundFormData,
 } from "@/components/applications/round-form-block";
 import type { Candidate } from "@/types";
+import { createApplicationAction } from "@/actions/applications";
 
 // ── Zod schema ──
 const applicationSchema = z.object({
@@ -126,13 +127,38 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
 
   // ── Submit ──
   const onSubmit = async (data: ApplicationFormValues) => {
-    // Simulate async save
-    await new Promise((r) => setTimeout(r, 800));
-    console.log("Creating application:", { ...data, rounds });
-    toast.success("Application added successfully!", {
-      description: `${data.jobTitle} @ ${data.company} has been saved.`,
-    });
-    router.push(`/dashboard/candidates/${candidate.id}?tab=applications`);
+    try {
+      await createApplicationAction({
+        candidateId: candidate.id,
+        jobTitle: data.jobTitle,
+        company: data.company,
+        jobUrl: data.jobPostingUrl,
+        source: "Manual",
+        techTags: [],
+        appliedDate: new Date(data.applicationDate).toISOString(),
+        status:
+          data.status === "Interview Scheduled"
+            ? "INTERVIEW_SCHEDULED"
+            : data.status === "Feedback Received"
+              ? "FEEDBACK_RECEIVED"
+              : data.status === "Offer Extended"
+                ? "OFFER_EXTENDED"
+                : data.status === "Placed"
+                  ? "PLACED"
+                  : data.status === "Rejected"
+                    ? "REJECTED"
+                    : data.status === "On Hold"
+                      ? "ON_HOLD"
+                      : "APPLIED",
+      });
+
+      toast.success("Application added successfully!", {
+        description: `${data.jobTitle} @ ${data.company} has been saved.`,
+      });
+      router.push(`/dashboard/candidates/${candidate.id}?tab=applications`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to add application");
+    }
   };
 
   const showInterviewRounds =

@@ -1,5 +1,7 @@
 "use client";
 
+"use no memo";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -33,7 +35,11 @@ import {
   Trash2,
   LogOut,
 } from "lucide-react";
-import { currentRecruiter } from "@/lib/data";
+
+interface SettingsUser {
+  name: string;
+  email: string;
+}
 
 // ── Zod schema ──
 const profileSchema = z.object({
@@ -65,7 +71,7 @@ const statusOptions = [
   "On Hold",
 ] as const;
 
-export function SettingsForm() {
+export function SettingsForm({ user }: { user: SettingsUser }) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
@@ -78,7 +84,7 @@ export function SettingsForm() {
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: currentRecruiter.name,
+      name: user.name,
       phone: "+91 98765 43210",
       timezone: "IST",
       defaultSource: "LinkedIn",
@@ -134,7 +140,7 @@ export function SettingsForm() {
             <CardContent className="flex items-center gap-6">
               <Avatar className="h-20 w-20 border-4 border-primary/10">
                 <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                  {currentRecruiter.name
+                  {user.name
                     .split(" ")
                     .map((n) => n[0])
                     .join("")}
@@ -178,7 +184,7 @@ export function SettingsForm() {
                 <Input
                   id="email"
                   type="email"
-                  value={currentRecruiter.email}
+                  value={user.email}
                   disabled
                   className="bg-muted"
                 />

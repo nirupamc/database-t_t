@@ -4,8 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CalendarDays } from "lucide-react";
-import { candidates } from "@/lib/data";
 import type { ApplicationStatus } from "@/types";
+
+interface CandidateCardView {
+  id: string;
+  name: string;
+  skills: string[];
+  applications: Array<{
+    id: string;
+    status: ApplicationStatus;
+    rounds: Array<{ id: string; date: string; time: string }>;
+  }>;
+}
 
 /** Map application status to badge variant */
 function statusVariant(status: ApplicationStatus) {
@@ -28,7 +38,7 @@ function statusVariant(status: ApplicationStatus) {
 }
 
 /** Recent candidates grid (first 3) */
-export function CandidateCards() {
+export function CandidateCards({ candidates }: { candidates: CandidateCardView[] }) {
   // Show first 3 candidates who have applications
   const recent = candidates.filter((c) => c.applications.length > 0).slice(0, 3);
 

@@ -5,7 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Eye, EyeOff, Upload } from "lucide-react";
-import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -19,13 +18,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { EmployeeRecord as AdminEmployeeRecord } from "@/lib/fakeEmployees";
-
-let employeeSequence = 1000;
-
-function nextEmployeeId() {
-  employeeSequence += 1;
-  return `emp-${employeeSequence}`;
+interface AddEmployeePayload {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  profilePhotoUrl?: string;
 }
 
 const schema = z.object({
@@ -33,6 +31,10 @@ const schema = z.object({
   email: z.string().email("Valid email required"),
   phone: z.string().min(10, "Phone is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -40,16 +42,19 @@ type FormValues = z.infer<typeof schema>;
 interface AddEmployeeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onAddEmployee: (employee: AdminEmployeeRecord) => void;
+  onAddEmployee: (employee: AddEmployeePayload) => Promise<void> | void;
+  submitting?: boolean;
 }
 
 export function AddEmployeeModal({
   open,
   onOpenChange,
   onAddEmployee,
+  submitting = false,
 }: AddEmployeeModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | undefined>(undefined);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
@@ -63,6 +68,7 @@ export function AddEmployeeModal({
       email: "",
       phone: "",
       password: "",
+      confirmPassword: "",
     },
   });
 
@@ -82,27 +88,12 @@ export function AddEmployeeModal({
   const onSubmit = async (values: FormValues) => {
     await new Promise((resolve) => setTimeout(resolve, 350));
 
-    const employee: AdminEmployeeRecord = {
-      id: nextEmployeeId(),
+    await onAddEmployee({
       name: values.name,
       email: values.email,
       phone: values.phone,
-      role: "Recruiter",
-      imageUrl: imagePreview,
-      lastActivityDate: new Date().toISOString().split("T")[0],
-      assignedCandidates: [],
-      performance: {
-        totalAssignedCandidates: 0,
-        totalApplicationsSubmitted: 0,
-        totalInterviewsScheduled: 0,
-        totalOffersExtended: 0,
-        totalPlacements: 0,
-      },
-    };
-
-    onAddEmployee(employee);
-    toast.success("Employee added", {
-      description: `${values.name} was added as Recruiter.`,
+      password: values.password,
+      profilePhotoUrl: imagePreview,
     });
     reset();
     setImagePreview(undefined);
@@ -181,12 +172,34 @@ export function AddEmployeeModal({
             )}
           </div>
 
+          <div className="space-y-1.5">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                {...register("confirmPassword")}
+              />
+              <button
+                type="button"
+                aria-label="Toggle confirm password visibility"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
+              >
+                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+            )}
+          </div>
+
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-              {isSubmitting ? "Adding..." : "Create Employee"}
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting || submitting}>
+              {isSubmitting || submitting ? "Adding..." : "Create Employee"}
             </Button>
           </DialogFooter>
         </form>

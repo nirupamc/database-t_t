@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -14,7 +15,6 @@ import {
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { clearAuthSession } from "@/lib/auth";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -29,8 +29,7 @@ export function AdminSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
-    clearAuthSession();
-    router.push("/login");
+    signOut({ callbackUrl: "/login" });
   };
 
   return (

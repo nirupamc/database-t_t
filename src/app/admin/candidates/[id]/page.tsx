@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 
+import { getCandidateByIdAction } from "@/actions/candidates";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { candidatesSeed, getCandidateMetrics } from "@/lib/fakeData";
+import { getAdminCandidateMetrics, mapCandidateToAdminView } from "@/lib/admin-mappers";
 
 export default async function AdminCandidateDetailPage({
   params,
@@ -10,18 +11,19 @@ export default async function AdminCandidateDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const candidate = candidatesSeed.find((item) => item.id === id);
+  const candidate = await getCandidateByIdAction(id);
 
   if (!candidate) {
     notFound();
   }
 
-  const metrics = getCandidateMetrics(candidate);
+  const candidateView = mapCandidateToAdminView(candidate);
+  const metrics = getAdminCandidateMetrics(candidateView);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{candidate.name}</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{candidateView.name}</h1>
         <p className="text-muted-foreground">Admin Candidate Details</p>
       </div>
 
@@ -30,15 +32,15 @@ export default async function AdminCandidateDetailPage({
           <CardTitle>Profile</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2">
-          <p><span className="text-muted-foreground">Title:</span> {candidate.title}</p>
-          <p><span className="text-muted-foreground">Email:</span> {candidate.email}</p>
-          <p><span className="text-muted-foreground">Phone:</span> {candidate.phone}</p>
-          <p><span className="text-muted-foreground">LinkedIn:</span> {candidate.linkedInUrl}</p>
-          <p><span className="text-muted-foreground">Recruiter:</span> {candidate.assignedRecruiter}</p>
-          <p><span className="text-muted-foreground">Location:</span> {candidate.location}</p>
-          <p><span className="text-muted-foreground">Experience:</span> {candidate.experienceYears} years</p>
-          <p><span className="text-muted-foreground">Notice:</span> {candidate.noticePeriod}</p>
-          <p className="sm:col-span-2"><span className="text-muted-foreground">Resume:</span> {candidate.resumeLink}</p>
+          <p><span className="text-muted-foreground">Title:</span> {candidateView.title}</p>
+          <p><span className="text-muted-foreground">Email:</span> {candidateView.email}</p>
+          <p><span className="text-muted-foreground">Phone:</span> {candidateView.phone}</p>
+          <p><span className="text-muted-foreground">LinkedIn:</span> {candidateView.linkedInUrl}</p>
+          <p><span className="text-muted-foreground">Recruiter:</span> {candidateView.assignedRecruiter}</p>
+          <p><span className="text-muted-foreground">Location:</span> {candidateView.location}</p>
+          <p><span className="text-muted-foreground">Experience:</span> {candidateView.experienceYears} years</p>
+          <p><span className="text-muted-foreground">Notice:</span> {candidateView.noticePeriod}</p>
+          <p className="sm:col-span-2"><span className="text-muted-foreground">Resume:</span> {candidateView.resumeLink}</p>
         </CardContent>
       </Card>
 

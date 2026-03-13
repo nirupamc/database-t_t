@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Bell, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -13,10 +14,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { currentRecruiter } from "@/lib/data";
 
 export function TopBar() {
+  const { data: session } = useSession();
   const router = useRouter();
+  const name = session?.user?.name ?? "Recruiter";
+  const initials = name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const handleLogout = () => {
+    signOut({ callbackUrl: "/login" });
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
@@ -28,7 +40,7 @@ export function TopBar() {
         <p className="text-sm text-muted-foreground">
           Welcome,{" "}
           <span className="font-semibold text-foreground">
-            {currentRecruiter.name.split(" ")[0]}
+            {name.split(" ")[0]}
           </span>
         </p>
       </div>
@@ -71,24 +83,21 @@ export function TopBar() {
             <button className="flex items-center gap-2 rounded-full focus:outline-none">
               <Avatar className="h-9 w-9 border-2 border-primary/20">
                 <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">
-                  {currentRecruiter.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>{currentRecruiter.name}</DropdownMenuLabel>
+            <DropdownMenuLabel>{name}</DropdownMenuLabel>
             <DropdownMenuSeparator />
 
             <DropdownMenuItem onClick={() => router.push("/settings")}>
               <Settings className="mr-2 h-4 w-4" /> Settings
             </DropdownMenuItem>
 
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" /> Logout
             </DropdownMenuItem>
           </DropdownMenuContent>

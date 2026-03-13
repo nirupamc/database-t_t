@@ -1,29 +1,37 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { getToken } from "next-auth/jwt";
 
-const ADMIN_COOKIE = "hireflow-role";
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const role = request.cookies.get(ADMIN_COOKIE)?.value;
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+  const role = token?.role;
 
-  if ((pathname.startsWith("/admin") || pathname.startsWith("/candidates")) && role !== "admin") {
+  const isAuthRoute = pathname.startsWith("/login");
+  const isAdminRoute = pathname.startsWith("/admin");
+  const isRecruiterRoute =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/add-candidate") || pathname.startsWith("/settings");
+
+  if ((isAdminRoute || isRecruiterRoute) && !token) {
     const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (pathname === "/login" && role === "admin") {
-    const adminUrl = new URL("/admin", request.url);
-    return NextResponse.redirect(adminUrl);
+  if (isAdminRoute && role !== "admin") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (pathname === "/login" && role === "recruiter") {
-    const dashboardUrl = new URL("/dashboard", request.url);
-    return NextResponse.redirect(dashboardUrl);
+  if (isRecruiterRoute && role !== "recruiter") {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  if (isAuthRoute && token) {
+    return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/candidates/:path*", "/login"],
+  matcher: ["/admin/:path*", "/dashboard/:path*", "/add-candidate/:path*", "/settings/:path*", "/login"],
 };

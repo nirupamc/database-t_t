@@ -1,13 +1,97 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { CandidateCards } from "@/components/dashboard/candidate-cards";
-import { dashboardStats } from "@/lib/data";
+import { getCurrentSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import type { ApplicationStatus } from "@/types";
+
+function mapApplicationStatus(status: string): ApplicationStatus {
+  switch (status) {
+    case "APPLIED":
+      return "Applied";
+    case "INTERVIEW_SCHEDULED":
+      return "Interview Scheduled";
+    case "FEEDBACK_RECEIVED":
+      return "In Interview";
+    case "OFFER_EXTENDED":
+      return "Offer Stage";
+    case "PLACED":
+      return "Offer Received";
+    case "ON_HOLD":
+      return "On Hold";
+    case "REJECTED":
+    default:
+      return "Rejected";
+  }
+}
 
 /** Dashboard – Recruiter Overview */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getCurrentSession();
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const candidateWhere = session.user.role === "admin" ? {} : { recruiterId: session.user.id };
+
+  const [candidates, applications, pendingOffers] = await Promise.all([
+    prisma.candidate.findMany({
+      where: candidateWhere,
+      include: {
+        applications: {
+          include: { rounds: true },
+          orderBy: { appliedDate: "desc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
+    prisma.application.findMany({
+      where: session.user.role === "admin" ? {} : { candidate: { recruiterId: session.user.id } },
+      include: { rounds: true },
+    }),
+    prisma.application.count({
+      where: {
+        status: "OFFER_EXTENDED",
+        ...(session.user.role === "admin" ? {} : { candidate: { recruiterId: session.user.id } }),
+      },
+    }),
+  ]);
+
+  const interviewsThisWeek = applications.reduce(
+    (count, application) => count + application.rounds.filter((round) => ["PENDING", "RESCHEDULED"].includes(round.roundStatus)).length,
+    0
+  );
+
+  const dashboardStats = {
+    activeCandidates: candidates.length,
+    activeCandidatesChange: "+12%",
+    interviewsThisWeek,
+    interviewsNote: interviewsThisWeek > 0 ? "Upcoming interview rounds scheduled" : "No interviews scheduled",
+    offersPending: pendingOffers,
+    offersNote: pendingOffers > 0 ? "Offers awaiting candidate response" : "No pending offers",
+    goalProgress: Math.min(100, Math.round((applications.length / 25) * 100)),
+  };
+
+  const recentCandidates = candidates.map((candidate) => ({
+    id: candidate.id,
+    name: candidate.fullName,
+    skills: candidate.skills,
+    applications: candidate.applications.map((application) => ({
+      id: application.id,
+      status: mapApplicationStatus(application.status),
+      rounds: application.rounds.map((round) => ({
+        id: round.id,
+        date: round.date.toISOString(),
+        time: round.time,
+      })),
+    })),
+  }));
+
   return (
     <div className="space-y-8">
       {/* Page header */}
@@ -19,7 +103,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats row */}
-      <StatsCards />
+      <StatsCards dashboardStats={dashboardStats} />
 
       {/* Recent Candidates */}
       <div>
@@ -29,11 +113,11 @@ export default function DashboardPage() {
             <Link href="/dashboard/candidates">View All Candidates</Link>
           </Button>
         </div>
-        <CandidateCards />
+        <CandidateCards candidates={recentCandidates} />
       </div>
 
       {/* Current Goal progress */}
-      <div className="fixed bottom-6 left-6 lg:left-[calc(16rem+1.5rem)] w-44 rounded-xl border bg-card p-4 shadow-lg">
+      <div className="fixed bottom-6 left-6 lg:left-70 w-44 rounded-xl border bg-card p-4 shadow-lg">
         <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
           Current Goal
         </p>

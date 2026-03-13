@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { EmployeeRecord } from "@/lib/fakeEmployees";
+import type { AdminEmployeeView } from "@/lib/admin-mappers";
 
 const schema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -32,11 +32,12 @@ type FormValues = z.infer<typeof schema>;
 interface EditEmployeeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  employee: EmployeeRecord;
-  onSave: (employee: EmployeeRecord) => void;
+  employee: AdminEmployeeView;
+  onSave: (employee: { id: string; name: string; email: string; phone: string; profilePhotoUrl?: string }) => Promise<void> | void;
+  submitting?: boolean;
 }
 
-export function EditEmployeeModal({ open, onOpenChange, employee, onSave }: EditEmployeeModalProps) {
+export function EditEmployeeModal({ open, onOpenChange, employee, onSave, submitting = false }: EditEmployeeModalProps) {
   const [imagePreview, setImagePreview] = useState<string | undefined>(employee.imageUrl);
 
   const {
@@ -78,14 +79,13 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSave }: Edit
   const onSubmit = async (values: FormValues) => {
     await new Promise((resolve) => setTimeout(resolve, 350));
 
-    onSave({
-      ...employee,
+    await onSave({
+      id: employee.id,
       name: values.name,
       email: values.email,
       phone: values.phone,
-      imageUrl: imagePreview,
+      profilePhotoUrl: imagePreview,
     });
-    toast.success("Employee profile updated");
     onOpenChange(false);
   };
 
@@ -144,8 +144,8 @@ export function EditEmployeeModal({ open, onOpenChange, employee, onSave }: Edit
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting}>
-              {isSubmitting ? "Saving..." : "Save Changes"}
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting || submitting}>
+              {isSubmitting || submitting ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
