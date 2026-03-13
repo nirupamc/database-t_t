@@ -28,6 +28,7 @@ const candidateSchema = z.object({
 
 const updateCandidateSchema = candidateSchema.extend({
   id: z.string().min(1),
+  recruiterId: z.string().optional().default(""),
 });
 
 export async function listCandidatesAction() {
@@ -130,7 +131,8 @@ export async function updateCandidateAction(payload: unknown) {
       noticePeriod: data.noticePeriod,
       expectedCTC: data.expectedCTC,
       status: data.status as CandidateStatus,
-      recruiterId: user.role === "admin" ? data.recruiterId : existing.recruiterId,
+      // preserve existing recruiterId if admin didn't change it or if recruiter is editing
+      recruiterId: (user.role === "admin" && data.recruiterId) ? data.recruiterId : existing.recruiterId,
       uvPhone: data.uvPhone || null,
       uvPassword: data.uvPassword || null,
     },

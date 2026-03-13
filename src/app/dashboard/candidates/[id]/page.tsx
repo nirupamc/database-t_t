@@ -34,5 +34,5 @@ export default async function CandidatePage({
     notFound();
   }
 
-  return <CandidateProfile candidate={mapCandidateToView(candidate)} />;
+  return <CandidateProfile candidate={mapCandidateToView(candidate)} isAdmin={session.user.role === "admin"} />;
 }
