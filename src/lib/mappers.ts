@@ -39,6 +39,8 @@ type CandidateWithRelations = {
     name: string;
   };
   createdAt: Date;
+  uvPhone?: string | null;
+  uvPassword?: string | null;
 };
 
 function mapRound(round: CandidateWithRelations["applications"][number]["rounds"][number], index: number): InterviewRound {
@@ -110,5 +112,7 @@ export function mapCandidateToView(candidate: CandidateWithRelations): Candidate
     notes: "",
     applications: candidate.applications.map(mapApplication),
     createdAt: candidate.createdAt.toISOString(),
+    uvPhone: candidate.uvPhone ?? undefined,
+    uvPassword: candidate.uvPassword ?? undefined,
   };
 }

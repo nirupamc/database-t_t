@@ -22,6 +22,8 @@ const candidateSchema = z.object({
   expectedCTC: z.string().min(1),
   status: z.enum(["ACTIVE", "ON_HOLD", "PLACED", "REJECTED"]).default("ACTIVE"),
   recruiterId: z.string().min(1),
+  uvPhone: z.string().optional().nullable(),
+  uvPassword: z.string().optional().nullable(),
 });
 
 const updateCandidateSchema = candidateSchema.extend({
@@ -90,6 +92,8 @@ export async function createCandidateAction(payload: unknown) {
       status: data.status as CandidateStatus,
       recruiterId: user.role === "admin" ? data.recruiterId : user.id,
       addedBy: session?.user?.email ?? "system",
+      uvPhone: data.uvPhone || null,
+      uvPassword: data.uvPassword || null,
     },
   });
 
@@ -127,6 +131,8 @@ export async function updateCandidateAction(payload: unknown) {
       expectedCTC: data.expectedCTC,
       status: data.status as CandidateStatus,
       recruiterId: user.role === "admin" ? data.recruiterId : existing.recruiterId,
+      uvPhone: data.uvPhone || null,
+      uvPassword: data.uvPassword || null,
     },
   });
 

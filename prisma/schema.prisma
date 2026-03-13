@@ -67,6 +67,8 @@ model Candidate {
   status          CandidateStatus @default(ACTIVE)
   recruiterId     String
   addedBy         String
+  uvPhone         String?
+  uvPassword      String?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   recruiter       Recruiter       @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
