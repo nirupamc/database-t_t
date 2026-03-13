@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HireFlow — Recruitment Dashboard",
-  description: "Modern ATS recruitment dashboard for managing candidates and applications",
+  title: "Tantech — Recruitment Dashboard",
+  description: "Modern ATS recruitment dashboard by Tantech for managing candidates and applications",
 };
 
 export default function RootLayout({

@@ -136,7 +136,7 @@ export function AddEmployeeModal({
 
           <div className="space-y-1.5">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" {...register("email")} placeholder="name@hireflow.com" />
+            <Input id="email" {...register("email")} placeholder="name@tantech.com" />
             {errors.email && (
               <p className="text-xs text-destructive">{errors.email.message}</p>
             )}
@@ -198,7 +198,7 @@ export function AddEmployeeModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting || submitting}>
+            <Button type="submit" className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" disabled={isSubmitting || submitting}>
               {isSubmitting || submitting ? "Adding..." : "Create Employee"}
             </Button>
           </DialogFooter>

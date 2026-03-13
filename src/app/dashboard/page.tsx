@@ -130,7 +130,7 @@ export default async function DashboardPage() {
       {/* Floating + button */}
       <Button
         size="icon"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl bg-emerald-600 hover:bg-emerald-700"
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-xl bg-yellow-500 hover:bg-yellow-600 text-black"
         asChild
       >
         <Link href="/add-candidate">

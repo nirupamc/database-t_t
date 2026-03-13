@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -55,10 +56,10 @@ export function Sidebar() {
       >
         {/* Logo / brand */}
         <div className="flex h-16 items-center gap-3 px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
-            <LayoutDashboard className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-400/20">
+            <Image src="/tantech-logo.svg" alt="Tantech" width={24} height={24} className="invert" />
           </div>
-          <span className="text-lg font-bold tracking-tight">HireFlow</span>
+          <span className="text-lg font-bold tracking-tight text-yellow-400">Tantech</span>
         </div>
 
         {/* Nav links */}
@@ -86,7 +87,7 @@ export function Sidebar() {
 
         {/* Footer */}
         <div className="border-t border-white/10 px-6 py-4 text-xs text-white/50">
-          © 2024 HireFlow ATS
+          © 2025 Tantech ATS
         </div>
       </aside>
     </>

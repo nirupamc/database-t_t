@@ -222,7 +222,7 @@ export function CandidateDetailModal({
                   </div>
                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:bg-card">
                     <p className="text-xs uppercase tracking-wide text-muted-foreground">Placements</p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-600">{metrics.placements}</p>
+                    <p className="mt-2 text-2xl font-semibold text-yellow-600">{metrics.placements}</p>
                   </div>
                 </div>
               </div>

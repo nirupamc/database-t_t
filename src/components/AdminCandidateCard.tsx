@@ -111,7 +111,7 @@ export function AdminCandidateCard({ candidate, onViewDetails }: AdminCandidateC
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Placements</p>
-            <p className="font-semibold text-emerald-600">{metrics.placements}</p>
+            <p className="font-semibold text-yellow-600">{metrics.placements}</p>
           </div>
         </div>
 

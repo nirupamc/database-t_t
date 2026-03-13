@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,8 @@ import {
   DollarSign,
   Plus,
   User,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -85,46 +88,87 @@ function CandidateHero({ candidate }: { candidate: Candidate }) {
 
 /** Profile tab — skills, notice period, CTC etc. */
 function ProfileTab({ candidate }: { candidate: Candidate }) {
+  const [showUvPassword, setShowUvPassword] = useState(false);
+
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      {/* Skills */}
-      <Card>
-        <CardContent className="p-5 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shrink-0">
-            <Code2 className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Skills</p>
-            <p className="text-sm font-medium">{candidate.skills.join(", ")}</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        {/* Skills */}
+        <Card>
+          <CardContent className="p-5 flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600 shrink-0">
+              <Code2 className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Skills</p>
+              <p className="text-sm font-medium">{candidate.skills.join(", ")}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Notice Period */}
-      <Card>
-        <CardContent className="p-5 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 shrink-0">
-            <Briefcase className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Notice Period</p>
-            <p className="text-sm font-medium">{candidate.noticePeriod}</p>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Notice Period */}
+        <Card>
+          <CardContent className="p-5 flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-purple-600 shrink-0">
+              <Briefcase className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Notice Period</p>
+              <p className="text-sm font-medium">{candidate.noticePeriod}</p>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Current CTC */}
-      <Card>
-        <CardContent className="p-5 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 shrink-0">
-            <DollarSign className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Current CTC</p>
-            <p className="text-sm font-medium">{candidate.currentCtc}</p>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Current CTC */}
+        <Card>
+          <CardContent className="p-5 flex items-start gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-yellow-50 text-yellow-600 shrink-0">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Current CTC</p>
+              <p className="text-sm font-medium">{candidate.currentCtc}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Unified Voice Credentials */}
+      {(candidate.uvPhone || candidate.uvPassword) && (
+        <Card className="border-yellow-200 dark:border-yellow-800/40">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📞</span>
+              <p className="font-semibold text-sm">Unified Voice Credentials</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {candidate.uvPhone && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">UV Phone</p>
+                  <p className="text-sm font-medium font-mono">{candidate.uvPhone}</p>
+                </div>
+              )}
+              {candidate.uvPassword && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">UV Password</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium font-mono">
+                      {showUvPassword ? candidate.uvPassword : "••••••••"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowUvPassword((prev) => !prev)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showUvPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

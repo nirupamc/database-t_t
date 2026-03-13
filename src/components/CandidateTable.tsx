@@ -148,7 +148,7 @@ export function CandidateTable({ candidates }: CandidateTableProps) {
           </div>
           <Button
             onClick={() => toast.success("Exported to CSV")}
-            className="bg-emerald-600 hover:bg-emerald-700"
+            className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
           >
             <Download className="mr-2 h-4 w-4" /> Export All Data
           </Button>

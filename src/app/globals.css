@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* ── shadcn/ui CSS variable theme (blue/gray/white) ── */
+/* ── Tantech CSS variable theme (yellow/amber) ── */
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -50,72 +50,75 @@
 :root {
   --radius: 0.625rem;
 
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
+  --background: 48 30% 97%;
+  --foreground: 30 20% 10%;
 
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 30 20% 10%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 30 20% 10%;
 
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+  /* Yellow-500 primary */
+  --primary: 45 93% 47%;
+  --primary-foreground: 30 20% 10%;
 
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 45 40% 92%;
+  --secondary-foreground: 30 20% 15%;
 
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted: 45 30% 93%;
+  --muted-foreground: 30 15% 45%;
 
-  --accent: 210 40% 96%;
-  --accent-foreground: 222 47% 11%;
+  --accent: 45 40% 90%;
+  --accent-foreground: 30 20% 10%;
 
   --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 221 83% 53%;
+  --border: 45 20% 86%;
+  --input: 45 20% 86%;
+  --ring: 45 93% 47%;
 
-  --sidebar: 221 83% 53%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-active: 221 83% 43%;
+  /* Dark sidebar with yellow accent */
+  --sidebar: 222 30% 14%;
+  --sidebar-foreground: 45 90% 90%;
+  --sidebar-active: 45 93% 47%;
 }
 
 .dark {
-  --background: 222 47% 8%;
-  --foreground: 210 40% 98%;
+  --background: 222 30% 9%;
+  --foreground: 45 30% 93%;
 
-  --card: 222 47% 11%;
-  --card-foreground: 210 40% 98%;
+  --card: 222 30% 12%;
+  --card-foreground: 45 30% 93%;
 
-  --popover: 222 47% 11%;
-  --popover-foreground: 210 40% 98%;
+  --popover: 222 30% 12%;
+  --popover-foreground: 45 30% 93%;
 
-  --primary: 221 83% 60%;
-  --primary-foreground: 222 47% 11%;
+  /* Slightly brighter yellow in dark mode */
+  --primary: 45 93% 52%;
+  --primary-foreground: 30 20% 8%;
 
-  --secondary: 217 33% 17%;
-  --secondary-foreground: 210 40% 96%;
+  --secondary: 222 25% 18%;
+  --secondary-foreground: 45 20% 80%;
 
-  --muted: 217 33% 17%;
-  --muted-foreground: 215 20% 70%;
+  --muted: 222 25% 18%;
+  --muted-foreground: 45 15% 55%;
 
-  --accent: 217 33% 20%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 222 25% 22%;
+  --accent-foreground: 45 30% 93%;
 
   --destructive: 0 70% 45%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive-foreground: 0 0% 100%;
 
-  --border: 217 33% 22%;
-  --input: 217 33% 22%;
-  --ring: 221 83% 62%;
+  --border: 222 25% 22%;
+  --input: 222 25% 22%;
+  --ring: 45 93% 52%;
 
-  /* Dark navy sidebar while preserving HireFlow blue identity */
-  --sidebar: 224 64% 18%;
-  --sidebar-foreground: 210 40% 96%;
-  --sidebar-active: 223 58% 27%;
+  /* Darker sidebar for dark mode */
+  --sidebar: 222 35% 8%;
+  --sidebar-foreground: 45 70% 85%;
+  --sidebar-active: 45 93% 35%;
 }
 
 * {

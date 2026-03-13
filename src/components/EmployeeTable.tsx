@@ -87,7 +87,7 @@ export function EmployeeTable({ employees, onAddEmployee }: EmployeeTableProps) 
             <h3 className="text-lg font-semibold">Employees</h3>
             <p className="text-sm text-muted-foreground">Manage recruiter and admin users</p>
           </div>
-          <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setShowAddModal(true)}>
+          <Button className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" onClick={() => setShowAddModal(true)}>
             <Plus className="mr-1 h-4 w-4" /> Add New Employee
           </Button>
         </div>

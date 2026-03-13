@@ -17,7 +17,7 @@ export function StatsCards({ dashboardStats }: { dashboardStats: DashboardStatsV
       title: "Active Candidates",
       value: dashboardStats.activeCandidates,
       change: dashboardStats.activeCandidatesChange,
-      changeColor: "text-emerald-600",
+      changeColor: "text-yellow-600",
       icon: TrendingUp,
       iconBg: "bg-blue-50 text-blue-600",
     },

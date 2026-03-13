@@ -128,7 +128,7 @@ export function AdminEmployeeDetailClient({ employee, recruiterOptions }: AdminE
             <div className="flex items-center justify-between"><span>Total Applications Submitted</span><span>{employee.performance.totalApplicationsSubmitted}</span></div>
             <div className="flex items-center justify-between"><span>Total Interviews Scheduled</span><span>{employee.performance.totalInterviewsScheduled}</span></div>
             <div className="flex items-center justify-between"><span>Total Offers Extended</span><span>{employee.performance.totalOffersExtended}</span></div>
-            <div className="flex items-center justify-between text-emerald-400"><span>Total Placements</span><span>{employee.performance.totalPlacements}</span></div>
+            <div className="flex items-center justify-between text-yellow-400"><span>Total Placements</span><span>{employee.performance.totalPlacements}</span></div>
           </CardContent>
         </Card>
       </div>

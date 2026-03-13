@@ -130,7 +130,7 @@ export function ChangePasswordModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={isSubmitting || submitting}>
+            <Button type="submit" className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" disabled={isSubmitting || submitting}>
               {isSubmitting || submitting ? "Saving..." : "Update Password"}
             </Button>
           </DialogFooter>

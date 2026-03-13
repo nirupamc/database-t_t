@@ -73,9 +73,9 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">Login to Recruitment Hub</CardTitle>
+          <CardTitle className="text-2xl">Login to Tantech</CardTitle>
           <CardDescription>
-            Use your registered company credentials to continue
+            Use your registered Tantech credentials to continue
           </CardDescription>
         </CardHeader>
 
@@ -99,7 +99,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700"
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Signing in..." : "Login"}
@@ -125,7 +125,7 @@ export default function LoginPage() {
                       toast.success("Reset link sent");
                       setForgotOpen(false);
                     }}
-                    className="bg-emerald-600 hover:bg-emerald-700"
+                    className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
                   >
                     Send Reset Link
                   </Button>

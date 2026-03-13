@@ -1,33 +1,35 @@
-"use client";
-
-import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, BriefcaseBusiness, UserCog, Users, UserRoundCheck } from "lucide-react";
 
-import { EmployeeTable } from "@/components/EmployeeTable";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { EmployeeRecord } from "@/lib/fakeData";
-import { candidatesSeed, employeesSeed, getCandidateMetrics } from "@/lib/fakeData";
+import { prisma } from "@/lib/prisma";
+import { AdminEmployeesPageClient } from "@/components/AdminEmployeesPageClient";
+import { mapRecruiterToAdminView } from "@/lib/admin-mappers";
 
-export default function AdminDashboardPage() {
-  const [employees, setEmployees] = useState(employeesSeed);
-
-  const stats = useMemo(
-    () => ({
-      totalEmployees: employees.length,
-      totalCandidates: candidatesSeed.length,
-      placements: candidatesSeed.reduce(
-        (count, candidate) => count + getCandidateMetrics(candidate).placements,
-        0
-      ),
+export default async function AdminDashboardPage() {
+  const [recruiters, candidateCount] = await Promise.all([
+    prisma.recruiter.findMany({
+      include: {
+        candidates: {
+          include: {
+            applications: {
+              include: { rounds: true },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
     }),
-    [employees.length]
-  );
+    prisma.candidate.count(),
+  ]);
 
-  const handleAddEmployee = (employee: EmployeeRecord) => {
-    setEmployees((prev) => [employee, ...prev]);
-  };
+  const employees = recruiters.map(mapRecruiterToAdminView);
+
+  const totalPlacements = employees.reduce(
+    (sum, emp) => sum + emp.performance.totalPlacements,
+    0
+  );
 
   return (
     <div className="space-y-6">
@@ -44,37 +46,37 @@ export default function AdminDashboardPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Employees</p>
-              <p className="text-2xl font-bold">{stats.totalEmployees}</p>
+              <p className="text-2xl font-bold">{employees.length}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <div className="rounded-xl bg-yellow-50 p-3 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300">
               <UserRoundCheck className="h-5 w-5" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Candidates</p>
-              <p className="text-2xl font-bold">{stats.totalCandidates}</p>
+              <p className="text-2xl font-bold">{candidateCount}</p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
-            <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
+            <div className="rounded-xl bg-yellow-50 p-3 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-300">
               <BriefcaseBusiness className="h-5 w-5" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Placements</p>
-              <p className="text-2xl font-bold">{stats.placements}</p>
+              <p className="text-2xl font-bold">{totalPlacements}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="border-blue-100 shadow-sm">
+      <Card className="border-yellow-100 dark:border-yellow-900/30 shadow-sm">
         <CardContent className="flex flex-col gap-4 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-semibold">Admin workspaces are now split by function</h2>
@@ -83,7 +85,7 @@ export default function AdminDashboardPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
+            <Button asChild className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold">
               <Link href="/admin/employees">
                 <UserCog className="h-4 w-4" /> Employees <ArrowRight className="h-4 w-4" />
               </Link>
@@ -97,7 +99,7 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      <EmployeeTable employees={employees} onAddEmployee={handleAddEmployee} />
+      <AdminEmployeesPageClient initialEmployees={employees} />
     </div>
   );
 }

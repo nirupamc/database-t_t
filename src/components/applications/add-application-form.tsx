@@ -376,7 +376,7 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
         </Button>
         <Button
           type="submit"
-          className="bg-emerald-600 hover:bg-emerald-700 px-8"
+          className="bg-yellow-500 hover:bg-yellow-600 px-8 text-black font-semibold"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Creating..." : "Create Application"}

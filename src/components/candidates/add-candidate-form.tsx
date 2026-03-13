@@ -26,6 +26,8 @@ import {
   Upload,
   X,
   MapPin,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { createCandidateAction } from "@/actions/candidates";
 
@@ -47,6 +49,8 @@ const candidateSchema = z.object({
   expectedCtc: z.string().optional(),
   assignedRecruiter: z.string().optional(),
   quickNotes: z.string().optional(),
+  uvPhone: z.string().optional(),
+  uvPassword: z.string().optional(),
 });
 
 type CandidateFormValues = z.infer<typeof candidateSchema>;
@@ -70,6 +74,7 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showUvPassword, setShowUvPassword] = useState(false);
 
   const {
     register,
@@ -138,6 +143,8 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         expectedCTC: data.expectedCtc || "TBD",
         status: "ACTIVE",
         recruiterId: selectedRecruiter.id,
+        uvPhone: data.uvPhone || null,
+        uvPassword: data.uvPassword || null,
       });
 
       toast.success("Candidate created successfully!", {
@@ -454,6 +461,55 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         </CardContent>
       </Card>
 
+      {/* ── Unified Voice Credentials ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <span>📞</span> Unified Voice Credentials
+          </CardTitle>
+          <CardDescription>
+            Phone number and password used for Unified Voice app interviews
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="uvPhone">
+                UV Phone Number <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="uvPhone"
+                placeholder="+1 (555) 000-0000"
+                {...register("uvPhone")}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="uvPassword">
+                UV Password <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <div className="relative">
+                <Input
+                  id="uvPassword"
+                  type={showUvPassword ? "text" : "password"}
+                  placeholder="Enter UV password"
+                  className="pr-10"
+                  {...register("uvPassword")}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowUvPassword((prev) => !prev)}
+                  className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showUvPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Actions ── */}
       <div className="flex items-center justify-center gap-4 pb-8">
         <Button
@@ -465,7 +521,7 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         </Button>
         <Button
           type="submit"
-          className="bg-emerald-600 hover:bg-emerald-700 px-8"
+          className="bg-yellow-500 hover:bg-yellow-600 px-8 text-black font-semibold"
           disabled={isSubmitting}
         >
           {isSubmitting ? "Creating..." : "Create Candidate"}

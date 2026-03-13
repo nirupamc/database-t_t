@@ -195,7 +195,7 @@ export function AdminEmployeesPageClient({ initialEmployees }: AdminEmployeesPag
               placeholder="Search by name or email"
             />
           </div>
-          <Button className="h-11 bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => setAddOpen(true)}>
+          <Button className="h-11 bg-yellow-500 text-black font-semibold hover:bg-yellow-600" onClick={() => setAddOpen(true)}>
             <UserPlus className="mr-2 h-4 w-4" /> Add New Employee
           </Button>
         </div>

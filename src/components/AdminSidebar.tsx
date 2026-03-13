@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -56,12 +57,12 @@ export function AdminSidebar() {
         )}
       >
         <div className="flex h-16 items-center gap-3 px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
-            <LayoutDashboard className="h-5 w-5" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-yellow-400/20">
+            <Image src="/tantech-logo.svg" alt="Tantech" width={24} height={24} className="invert" />
           </div>
           <div>
-            <p className="text-lg font-bold tracking-tight">HireFlow</p>
-            <p className="text-xs text-white/70">Admin Console</p>
+            <p className="text-lg font-bold tracking-tight text-yellow-400">Tantech</p>
+            <p className="text-xs text-white/60">Admin Console</p>
           </div>
         </div>
 

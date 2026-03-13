@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" fill="none">
+  <!-- Left T shape -->
+  <polygon points="5,5 55,5 55,18 37,18 37,75 23,75 23,18 5,18" fill="currentColor"/>
+  <!-- Right T shape (mirrored/offset) -->
+  <polygon points="65,5 115,5 115,18 97,18 97,75 83,75 83,18 65,18" fill="currentColor"/>
+</svg>

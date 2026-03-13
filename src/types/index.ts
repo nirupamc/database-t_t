@@ -96,6 +96,8 @@ export interface Candidate {
   notes: string;
   applications: Application[];
   createdAt: string;       // ISO date
+  uvPhone?: string;
+  uvPassword?: string;
 }
 
 /** Recruiter user (simplified) */
