@@ -3,7 +3,7 @@
 "use no memo";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 import { Eye, Search, UserPlus } from "lucide-react";
@@ -87,7 +87,7 @@ export function AdminEmployeesPageClient({ initialEmployees }: AdminEmployeesPag
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     setEmployees(initialEmployees);
@@ -160,19 +160,21 @@ export function AdminEmployeesPageClient({ initialEmployees }: AdminEmployeesPag
     password: string;
     profilePhotoUrl?: string;
   }) => {
-    startTransition(async () => {
-      try {
-        await createEmployeeAction({
-          ...payload,
-          role: "RECRUITER",
-        });
-        toast.success("Employee added");
-        setAddOpen(false);
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Unable to add employee");
-      }
-    });
+    setIsCreating(true);
+    try {
+      await createEmployeeAction({
+        ...payload,
+        role: "RECRUITER",
+      });
+      toast.success("Employee added successfully");
+      setAddOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error("[handleCreateEmployee] Error:", error);
+      toast.error(error instanceof Error ? error.message : "Unable to add employee. Please try again.");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   return (
@@ -244,7 +246,7 @@ export function AdminEmployeesPageClient({ initialEmployees }: AdminEmployeesPag
         </>
       )}
 
-      <AddEmployeeModal open={addOpen} onOpenChange={setAddOpen} onAddEmployee={handleCreateEmployee} submitting={isPending} />
+      <AddEmployeeModal open={addOpen} onOpenChange={setAddOpen} onAddEmployee={handleCreateEmployee} submitting={isCreating} />
     </div>
   );
 }

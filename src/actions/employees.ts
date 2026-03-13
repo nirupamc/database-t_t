@@ -14,7 +14,8 @@ const createEmployeeSchema = z.object({
   phone: z.string().min(10),
   password: z.string().min(6),
   role: z.enum(["ADMIN", "RECRUITER"]),
-  profilePhotoUrl: z.string().url().optional().or(z.literal("")),
+  // Accept URLs, data URIs (base64 images), empty strings, or omitted
+  profilePhotoUrl: z.string().optional().nullable(),
 });
 
 const updateEmployeeSchema = z.object({
@@ -66,6 +67,9 @@ export async function getEmployeeByIdAction(id: string) {
 export async function createEmployeeAction(payload: unknown) {
   await requireAdmin();
   const data = parseOrThrow(createEmployeeSchema, payload);
+
+  console.log("[createEmployeeAction] Creating employee:", data.email, "role:", data.role);
+
   const hashedPassword = await hashPassword(data.password);
 
   const created = await prisma.recruiter.create({
@@ -78,6 +82,8 @@ export async function createEmployeeAction(payload: unknown) {
       profilePhotoUrl: data.profilePhotoUrl || null,
     },
   });
+
+  console.log("[createEmployeeAction] Successfully created:", created.id, created.email);
 
   revalidatePath("/admin/employees");
   return { success: true, data: created };
