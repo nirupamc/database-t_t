@@ -20,5 +20,5 @@ export default async function AddCandidatePage() {
     orderBy: { name: "asc" },
   });
 
-  return <AddCandidateForm recruiters={recruiters} />;
+  return <AddCandidateForm recruiters={recruiters} isAdmin={session?.user?.role === "admin"} />;
 }

@@ -69,7 +69,7 @@ const skillSuggestions = [
 ];
 
 /** Add New Candidate form */
-export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[] }) {
+export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: RecruiterOption[]; isAdmin?: boolean }) {
   const router = useRouter();
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
@@ -122,7 +122,10 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
   // Submit
   const onSubmit = async (data: CandidateFormValues) => {
     try {
-      const selectedRecruiter = recruiters.find((recruiter) => recruiter.name === data.assignedRecruiter);
+      // For non-admins, auto-assign themselves (only recruiter in the list)
+      const selectedRecruiter = isAdmin
+        ? recruiters.find((recruiter) => recruiter.name === data.assignedRecruiter)
+        : recruiters[0];
 
       if (!selectedRecruiter) {
         toast.error("Please select a recruiter");
@@ -412,54 +415,56 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         </CardContent>
       </Card>
 
-      {/* ── Recruitment Details ── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recruitment Details</CardTitle>
-          <CardDescription>Internal assignment and notes</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Assigned Recruiter */}
-          <div className="space-y-1.5">
-            <Label>
-              Assigned Recruiter <span className="text-orange-500 text-xs">(optional)</span>
-            </Label>
-            <Select
-              value={watch("assignedRecruiter")}
-              onValueChange={(val) => setValue("assignedRecruiter", val)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select a recruiter" />
-              </SelectTrigger>
-              <SelectContent>
-                {recruiters.map((r) => (
-                  <SelectItem key={r.id} value={r.name}>
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                        {r.name.split(" ").map((n) => n[0]).join("")}
+      {/* ── Recruitment Details (admin only) ── */}
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recruitment Details</CardTitle>
+            <CardDescription>Internal assignment and notes</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Assigned Recruiter */}
+            <div className="space-y-1.5">
+              <Label>
+                Assigned Recruiter <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Select
+                value={watch("assignedRecruiter")}
+                onValueChange={(val) => setValue("assignedRecruiter", val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a recruiter" />
+                </SelectTrigger>
+                <SelectContent>
+                  {recruiters.map((r) => (
+                    <SelectItem key={r.id} value={r.name}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
+                          {r.name.split(" ").map((n) => n[0]).join("")}
+                        </div>
+                        {r.name}
                       </div>
-                      {r.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Quick Notes */}
-          <div className="space-y-1.5">
-            <Label htmlFor="quickNotes">
-              Quick Notes <span className="text-orange-500 text-xs">(optional)</span>
-            </Label>
-            <Textarea
-              id="quickNotes"
-              placeholder="Add any initial feedback or specific requirements..."
-              className="min-h-[100px]"
-              {...register("quickNotes")}
-            />
-          </div>
-        </CardContent>
-      </Card>
+            {/* Quick Notes */}
+            <div className="space-y-1.5">
+              <Label htmlFor="quickNotes">
+                Quick Notes <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Textarea
+                id="quickNotes"
+                placeholder="Add any initial feedback or specific requirements..."
+                className="min-h-[100px]"
+                {...register("quickNotes")}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Unified Voice Credentials ── */}
       <Card>
