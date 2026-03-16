@@ -22,9 +22,12 @@ import { Label } from "@/components/ui/label";
 import {
   Plus,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { createRoundAction } from "@/actions/rounds";
 import type {
   Application,
   InterviewRound,
@@ -62,26 +65,6 @@ const statusColors: Record<RoundStatus, string> = {
   Rescheduled: "bg-blue-100 text-blue-700 border-blue-200",
   Failed: "bg-red-100 text-red-700 border-red-200",
 };
-
-/** Creates a blank round for adding */
-function createBlankRound(roundNumber: number): InterviewRound {
-  return {
-    id: `r-new-${Date.now()}`,
-    roundNumber,
-    title: `Round ${roundNumber}: Initial Screening`,
-    roundType: "Confirmation Call",
-    date: new Date().toISOString().split("T")[0],
-    time: "02:30 PM",
-    timezone: "IST",
-    duration: "30 mins",
-    mode: "Video Call (Google Meet)",
-    vcReceiver: "",
-    frontendCoordinator: "",
-    lipsyncQuality: "Good",
-    feedback: "",
-    status: "Pending",
-  };
-}
 
 /** Single interview round card */
 function RoundCard({
@@ -249,17 +232,45 @@ export function ApplicationsList({
 }: {
   applications: Application[];
 }) {
+  const router = useRouter();
   const [applications, setApplications] = useState(initialApps);
+  const [activeAppId, setActiveAppId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [roundForm, setRoundForm] = useState({
+    roundType: "Confirmation Call",
+    date: new Date().toISOString().split("T")[0],
+    time: "",
+    timezone: "IST",
+    duration: "30 mins",
+    mode: "Video Call (Google Meet)",
+    vcReceiver: "",
+    coordinator: "",
+    lipsync: "Excellent" as LipsyncQuality,
+    feedback: "",
+    roundStatus: "Pending" as RoundStatus,
+  });
+
+  const resetForm = () => {
+    setRoundForm({
+      roundType: "Confirmation Call",
+      date: new Date().toISOString().split("T")[0],
+      time: "",
+      timezone: "IST",
+      duration: "30 mins",
+      mode: "Video Call (Google Meet)",
+      vcReceiver: "",
+      coordinator: "",
+      lipsync: "Excellent",
+      feedback: "",
+      roundStatus: "Pending",
+    });
+    setFormErrors({});
+  };
 
   const addRound = (appId: string) => {
-    setApplications((prev) =>
-      prev.map((app) => {
-        if (app.id !== appId) return app;
-        const newRound = createBlankRound(app.rounds.length + 1);
-        return { ...app, rounds: [...app.rounds, newRound] };
-      })
-    );
-    toast.success("New round added");
+    setActiveAppId(appId);
+    resetForm();
   };
 
   const deleteRound = (appId: string, roundId: string) => {
@@ -273,6 +284,53 @@ export function ApplicationsList({
       })
     );
     toast.info("Round removed");
+  };
+
+  const updateField = <K extends keyof typeof roundForm>(key: K, value: (typeof roundForm)[K]) => {
+    setRoundForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    if (!roundForm.roundType) errors.roundType = "Round type is required";
+    if (!roundForm.date) errors.date = "Date is required";
+    if (!roundForm.time) errors.time = "Time is required";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveRound = async (appId: string) => {
+    if (!validateForm()) return;
+    try {
+      setIsSaving(true);
+      const result = await createRoundAction({
+        applicationId: appId,
+        roundType: roundForm.roundType,
+        date: roundForm.date,
+        time: roundForm.time,
+        timezone: roundForm.timezone,
+        duration: roundForm.duration,
+        mode: roundForm.mode,
+        vcReceiver: roundForm.vcReceiver || "",
+        coordinator: roundForm.coordinator || "",
+        lipsync: roundForm.lipsync || "",
+        feedback: roundForm.feedback || "",
+        roundStatus: roundForm.roundStatus.toUpperCase(),
+      });
+
+      if (result?.success) {
+        toast.success("Round saved successfully! 🗓");
+        setActiveAppId(null);
+        resetForm();
+        router.refresh();
+      } else {
+        toast.error("Failed to save round. Please try again.");
+      }
+    } catch (error) {
+      toast.error("Failed to save round. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (applications.length === 0) {
@@ -334,6 +392,155 @@ export function ApplicationsList({
                 <Plus className="h-4 w-4 mr-1" /> Add Round
               </Button>
             </div>
+
+            {/* Add Round form */}
+            {activeAppId === app.id && (
+              <Card className="border border-primary/30 bg-muted/40">
+                <CardContent className="space-y-4 pt-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Round Type</Label>
+                      <Select value={roundForm.roundType} onValueChange={(v) => updateField("roundType", v)}>
+                        <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                        <SelectContent>
+                          {roundTypes.map((rt) => (
+                            <SelectItem key={rt} value={rt}>{rt}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {formErrors.roundType && <p className="text-xs text-destructive">{formErrors.roundType}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Date</Label>
+                      <Input
+                        type="date"
+                        value={roundForm.date}
+                        onChange={(e) => updateField("date", e.target.value)}
+                      />
+                      {formErrors.date && <p className="text-xs text-destructive">{formErrors.date}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Time & Timezone</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={roundForm.time}
+                          onChange={(e) => updateField("time", e.target.value)}
+                          placeholder="14:30"
+                          className="flex-1"
+                        />
+                        <Select value={roundForm.timezone} onValueChange={(v) => updateField("timezone", v)}>
+                          <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {["IST","CST","EST","PST","GMT","CET"].map((tz) => (
+                              <SelectItem key={tz} value={tz}>{tz}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {formErrors.time && <p className="text-xs text-destructive">{formErrors.time}</p>}
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Duration</Label>
+                      <Select value={roundForm.duration} onValueChange={(v) => updateField("duration", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["15 mins","30 mins","45 mins","60 mins","90 mins"].map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Mode</Label>
+                      <Select value={roundForm.mode} onValueChange={(v) => updateField("mode", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {interviewModes.map((m) => (
+                            <SelectItem key={m} value={m}>{m}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">VC Receiver</Label>
+                      <Input
+                        value={roundForm.vcReceiver}
+                        onChange={(e) => updateField("vcReceiver", e.target.value)}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Frontend / Coordinator</Label>
+                      <Input
+                        value={roundForm.coordinator}
+                        onChange={(e) => updateField("coordinator", e.target.value)}
+                        placeholder="Coordinator name"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Lipsync</Label>
+                      <Select value={roundForm.lipsync} onValueChange={(v) => updateField("lipsync", v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {lipsyncOptions.map((l) => (
+                            <SelectItem key={l} value={l}>{l}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">Round Status</Label>
+                      <Select value={roundForm.roundStatus} onValueChange={(v) => updateField("roundStatus", v as RoundStatus)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(["Pending","Cleared","Rescheduled","Failed"] as RoundStatus[]).map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">Feedback</Label>
+                    <Textarea
+                      value={roundForm.feedback}
+                      onChange={(e) => updateField("feedback", e.target.value)}
+                      placeholder="Add detailed feedback about the candidate's performance..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-muted-foreground/40 text-muted-foreground"
+                      onClick={() => { setActiveAppId(null); resetForm(); }}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={() => handleSaveRound(app.id)}
+                      disabled={isSaving}
+                      className="bg-primary text-black hover:bg-primary/90 w-full sm:w-auto"
+                    >
+                      {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving...</> : "Save Round"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Rounds list */}
             <div className="space-y-3">

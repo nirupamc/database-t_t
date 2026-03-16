@@ -37,16 +37,23 @@ enum RoundStatus {
 }
 
 model Recruiter {
-  id              String      @id @default(cuid())
-  name            String
-  email           String      @unique
-  phone           String
-  password        String
-  role            UserRole    @default(RECRUITER)
-  profilePhotoUrl String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  candidates      Candidate[]
+  id                  String      @id @default(cuid())
+  name                String
+  email               String      @unique
+  phone               String
+  password            String
+  role                UserRole    @default(RECRUITER)
+  profilePhotoUrl     String?
+  // Google Calendar OAuth
+  googleAccessToken   String?
+  googleRefreshToken  String?
+  googleTokenExpiry   DateTime?
+  calendarConnected   Boolean     @default(false)
+  // Notification preferences
+  reminderTiming      Int         @default(60) // minutes before round
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  candidates          Candidate[]
 
   @@index([role])
 }
@@ -98,22 +105,28 @@ model Application {
 }
 
 model Round {
-  id            String      @id @default(cuid())
-  roundType     String
-  date          DateTime
-  time          String
-  timezone      String
-  duration      String
-  mode          String
-  vcReceiver    String
-  frontend      Boolean     @default(false)
-  lipsync       Boolean     @default(false)
-  feedback      String?
-  roundStatus   RoundStatus @default(PENDING)
-  applicationId String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  id                    String      @id @default(cuid())
+  roundType             String
+  date                  DateTime
+  time                  String
+  timezone              String
+  duration              String
+  mode                  String
+  vcReceiver            String
+  frontend              Boolean     @default(false)
+  lipsync               Boolean     @default(false)
+  feedback              String?
+  roundStatus           RoundStatus @default(PENDING)
+  applicationId         String
+  // Calendar integration
+  googleCalendarEventId String?
+  adminCalendarEventId  String?
+  // Reminder tracking
+  reminderSent          Boolean     @default(false)
+  reminderJobId         String?
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  application           Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
 }
