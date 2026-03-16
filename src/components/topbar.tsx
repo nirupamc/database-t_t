@@ -26,8 +26,9 @@ export function TopBar() {
     .slice(0, 2)
     .toUpperCase();
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: "/login" });
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    window.location.href = "/login";
   };
 
   return (
