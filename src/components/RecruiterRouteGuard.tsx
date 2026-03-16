@@ -12,13 +12,21 @@ export function RecruiterRouteGuard({ children }: { children: React.ReactNode })
     if (status === "loading") return;
 
     if (!session) {
-      router.replace("/login");
+      // No session - force navigation to login
+      window.location.href = "/login";
     } else if (session.user.role === "admin") {
       router.replace("/admin");
     }
   }, [router, session, status]);
 
-  if (status === "loading") return null;
+  // Show nothing while loading or if no session (will redirect)
+  if (status === "loading" || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }

@@ -26,9 +26,9 @@ export function TopBar() {
     .slice(0, 2)
     .toUpperCase();
 
-  const handleLogout = async () => {
-    await signOut({ redirect: false });
-    window.location.href = "/login";
+  const handleLogout = () => {
+    // Navigate directly to NextAuth signout endpoint for reliable cookie clearing
+    window.location.href = "/api/auth/signout?callbackUrl=/login";
   };
 
   return (

@@ -13,13 +13,21 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!session || session.user.role !== "admin") {
-      router.replace("/login");
+    if (!session) {
+      // No session - force navigation to login
+      window.location.href = "/login";
+    } else if (session.user.role !== "admin") {
+      router.replace("/dashboard");
     }
   }, [router, session, status]);
 
-  if (status === "loading") {
-    return null;
+  // Show nothing while loading or if no session (will redirect)
+  if (status === "loading" || !session || session.user.role !== "admin") {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;
