@@ -128,11 +128,14 @@ const statusOptions = [
 /**
  * Mask phone number for privacy display
  * "+91 98765 43210" → "+91 XXXXX 43210"
+ * Handles various input formats by normalizing first
  */
 function maskPhoneNumber(phone: string): string {
   const formatted = formatPhoneDisplay(phone);
-  // Replace first 5 digits after +91 with X
-  return formatted.replace(/(\+91\s?)(\d{5})/, "$1XXXXX");
+  // formatPhoneDisplay returns "+91 XXXXX XXXXX" format
+  // We want to mask first 5 digits: "+91 XXXXX 43210"
+  // The regex handles the space between +91 and digits
+  return formatted.replace(/(\+91 )(\d{5})( \d{5})/, "$1XXXXX$3");
 }
 
 /**
