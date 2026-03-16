@@ -44,6 +44,14 @@ model Recruiter {
   password        String
   role            UserRole    @default(RECRUITER)
   profilePhotoUrl String?
+  
+  // Google Calendar Integration
+  googleAccessToken    String?
+  googleRefreshToken   String?
+  googleTokenExpiry    DateTime?
+  calendarConnected    Boolean   @default(false)
+  reminderTiming       Int       @default(60)
+  
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   candidates      Candidate[]
