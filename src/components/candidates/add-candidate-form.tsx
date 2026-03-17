@@ -147,90 +147,94 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   const noticePeriod = watch("noticePeriod");
 
   const handleFileUpload = async (file: File) => {
-    console.log("[Upload] Starting upload, no form submit");
-    if (!RESUME_MIME_TYPES.includes(file.type)) {
-      setUploadStatus("error");
-      setUploadError("Only PDF or DOCX files are allowed");
-      return;
+    // Validate type
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/pdf',
+      'application/msword',
+    ]
+    if (!allowedTypes.includes(file.type)) {
+      setUploadStatus('error')
+      setUploadError('Only PDF or DOCX files are allowed')
+      return
+    }
+    // Validate size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadStatus('error')
+      setUploadError('File size must be less than 5MB')
+      return
     }
 
-    if (file.size > MAX_RESUME_SIZE_BYTES) {
-      setUploadStatus("error");
-      setUploadError("File size must be less than 5MB");
-      return;
-    }
-
-    setResumeFile(file);
-    setUploadStatus("uploading");
-    setUploadError("");
+    setResumeFile(file)
+    setUploadStatus('uploading')
+    setUploadError('')
 
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("candidateName", watch("name") || "Candidate");
+      const candidateName = watch('name') || 'Candidate'
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('candidateName', candidateName)
 
-      const response = await fetch("/api/uploads/resume", {
-        method: "POST",
+      const response = await fetch('/api/uploads/resume', {
+        method: 'POST',
         body: formData,
-      });
-
-      const data = await response.json();
+      })
+      const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || "Upload failed");
+        throw new Error(data.error || 'Upload failed')
       }
 
-      setResumeUrl(data.url);
-      setUploadStatus("success");
-    } catch (error) {
-      setUploadStatus("error");
-      setUploadError(error instanceof Error ? error.message : "Upload failed");
-      setResumeFile(null);
-      setResumeUrl("");
-    }
-  };
+      setResumeUrl(data.url)
+      setUploadStatus('success')
+      toast.success('Resume uploaded successfully!')
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    e.stopPropagation();
-    console.log("[FileInput] File selected, no page refresh");
-    const file = e.target.files?.[0];
-    if (file) {
-      console.log("[FileInput] Starting upload for:", file.name);
-      handleFileUpload(file);
+    } catch (error) {
+      setUploadStatus('error')
+      setUploadError(
+        error instanceof Error ? error.message : 'Upload failed'
+      )
+      setResumeFile(null)
+      setResumeUrl('')
     }
-    // Reset the input value so same file can be selected again if needed
-    e.target.value = "";
-  };
+  }
+
+  const handleFileInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    e.stopPropagation()
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+    e.target.value = ''
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(true)
+  }
 
   const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-  };
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+  }
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFileUpload(file);
-  };
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFileUpload(file)
+  }
 
   const handleRemoveResume = () => {
-    setResumeFile(null);
-    setResumeUrl("");
-    setUploadStatus("idle");
-    setUploadError("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
+    setResumeFile(null)
+    setResumeUrl('')
+    setUploadStatus('idle')
+    setUploadError('')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   // Submit
   const onSubmit = async (data: CandidateFormValues) => {
@@ -397,104 +401,129 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
               Resume Upload <span className="text-muted-foreground ml-1 text-xs">(optional)</span>
             </Label>
 
-            {/* Hidden file input — triggers file picker on click */}
+            {/* Hidden file input — required for file picker to work */}
             <input
               ref={fileInputRef}
               type="file"
               accept=".pdf,.doc,.docx"
               onChange={handleFileInputChange}
               onClick={(e) => e.stopPropagation()}
-              className="hidden"
-              style={{ display: "none" }}
-              aria-label="Upload resume"
+              style={{ display: 'none' }}
             />
 
-            {/* IDLE STATE — upload zone */}
-            {uploadStatus === "idle" && (
+            {/* IDLE STATE */}
+            {uploadStatus === 'idle' && (
               <div
                 onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
+                  e.preventDefault()
+                  e.stopPropagation()
+                  fileInputRef.current?.click()
                 }}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 ${
-                  isDragOver
-                    ? "border-yellow-400 bg-yellow-400/10 scale-[1.01]"
-                    : "border-border hover:border-yellow-400 hover:bg-yellow-400/5"
-                }`}
+                className={`
+                  flex items-center justify-center w-full h-32 
+                  border-2 border-dashed rounded-lg cursor-pointer 
+                  transition-all duration-200 select-none
+                  ${isDragOver
+                    ? 'border-yellow-400 bg-yellow-400/10'
+                    : 'border-muted-foreground/30 bg-muted/30 hover:border-yellow-400 hover:bg-yellow-400/5'
+                  }
+                `}
               >
-                <div className="flex flex-col items-center gap-2">
-                  <div className="w-12 h-12 rounded-full bg-yellow-400/10 flex items-center justify-center">
-                    <Upload className="w-6 h-6 text-yellow-400" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Click to upload or drag &amp; drop</p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF or DOCX up to 5MB</p>
-                  </div>
+                <div className="text-center pointer-events-none">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {isDragOver ? 'Drop file here' : 'Click to upload or drag & drop'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF or DOCX up to 5MB
+                  </p>
                 </div>
               </div>
             )}
 
             {/* UPLOADING STATE */}
-            {uploadStatus === "uploading" && (
-              <div className="border-2 border-dashed border-yellow-400 rounded-lg p-8 text-center bg-yellow-400/5">
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
-                  <p className="text-sm font-medium text-yellow-400">Uploading resume...</p>
-                  <p className="text-xs text-muted-foreground">{resumeFile?.name}</p>
-                  <div className="w-full bg-border rounded-full h-1.5">
-                    <div className="bg-yellow-400 h-1.5 rounded-full animate-pulse w-3/4" />
-                  </div>
+            {uploadStatus === 'uploading' && (
+              <div className="flex items-center justify-center w-full h-32 
+                border-2 border-dashed border-yellow-400 rounded-lg 
+                bg-yellow-400/5">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-yellow-400 
+                    border-t-transparent rounded-full animate-spin mx-auto mb-2" 
+                  />
+                  <p className="text-sm font-medium text-yellow-400">
+                    Uploading...
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {resumeFile?.name}
+                  </p>
                 </div>
               </div>
             )}
 
             {/* SUCCESS STATE */}
-            {uploadStatus === "success" && (
-              <div className="border-2 border-green-500/50 rounded-lg p-4 bg-green-500/5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+            {uploadStatus === 'success' && (
+              <div className="w-full border-2 border-dashed 
+                border-green-500/50 rounded-lg bg-green-500/5 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 
+                      flex items-center justify-center flex-shrink-0">
+                      <Upload className="w-5 h-5 text-green-500" />
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-green-500">Resume uploaded successfully</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{resumeFile?.name}</p>
+                    <div>
+                      <p className="text-sm font-medium text-green-500">
+                        ✅ Resume uploaded
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate 
+                        max-w-[180px]">
+                        {resumeFile?.name}
+                      </p>
                       <p className="text-xs text-muted-foreground">
-                        {resumeFile ? `${(resumeFile.size / 1024).toFixed(1)} KB` : ""}
+                        {resumeFile 
+                          ? `${(resumeFile.size / 1024).toFixed(1)} KB` 
+                          : ''}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2">
                     <a
                       href={resumeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
                       onClick={(e) => e.stopPropagation()}
+                      className="text-xs px-3 py-1.5 rounded-md border 
+                        border-yellow-400 text-yellow-400 
+                        hover:bg-yellow-400/10 transition-colors"
                     >
                       View
                     </a>
                     <button
                       type="button"
                       onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        fileInputRef.current?.click();
+                        e.preventDefault()
+                        e.stopPropagation()
+                        fileInputRef.current?.click()
                       }}
-                      className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-md border 
+                        border-border text-muted-foreground 
+                        hover:border-yellow-400 hover:text-yellow-400 
+                        transition-colors"
                     >
                       Replace
                     </button>
                     <button
                       type="button"
-                      onClick={handleRemoveResume}
-                      className="text-xs px-3 py-1.5 rounded-md border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors"
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleRemoveResume()
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-md border 
+                        border-red-500/50 text-red-400 
+                        hover:bg-red-500/10 transition-colors"
                     >
                       Remove
                     </button>
@@ -504,30 +533,30 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
             )}
 
             {/* ERROR STATE */}
-            {uploadStatus === "error" && (
-              <div className="border-2 border-red-500/50 rounded-lg p-4 bg-red-500/5">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-red-500">Upload failed</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{uploadError}</p>
-                    </div>
+            {uploadStatus === 'error' && (
+              <div className="w-full border-2 border-dashed 
+                border-red-500/50 rounded-lg bg-red-500/5 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-red-500">
+                      ❌ Upload failed
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {uploadError}
+                    </p>
                   </div>
                   <button
                     type="button"
                     onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setUploadStatus("idle");
-                      setUploadError("");
-                      fileInputRef.current?.click();
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setUploadStatus('idle')
+                      setUploadError('')
+                      fileInputRef.current?.click()
                     }}
-                    className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+                    className="text-xs px-3 py-1.5 rounded-md border 
+                      border-yellow-400 text-yellow-400 
+                      hover:bg-yellow-400/10 transition-colors"
                   >
                     Try Again
                   </button>
