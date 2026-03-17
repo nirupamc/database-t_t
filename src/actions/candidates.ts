@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { CandidateStatus } from "@prisma/client";
+import { CandidateStatus, Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { parseOrThrow, requireRecruiterOrAdmin } from "@/actions/_helpers";
@@ -77,30 +77,37 @@ export async function createCandidateAction(payload: unknown) {
   const data = parseOrThrow(candidateSchema, payload);
   const resumeUrl = data.resumeUrl?.trim();
 
-  const created = await prisma.candidate.create({
-    data: {
-      fullName: data.fullName,
-      email: data.email.toLowerCase(),
-      phone: data.phone,
-      personalLinkedIn: data.personalLinkedIn,
-      profilePhotoUrl: data.profilePhotoUrl || null,
-      resumeUrl: resumeUrl ? resumeUrl : null,
-      skills: data.skills,
-      experienceYears: data.experienceYears,
-      location: data.location,
-      noticePeriod: data.noticePeriod,
-      expectedCTC: data.expectedCTC,
-      status: data.status as CandidateStatus,
-      recruiterId: user.role === "admin" ? data.recruiterId : user.id,
-      addedBy: session?.user?.email ?? "system",
-      uvPhone: data.uvPhone || null,
-      uvPassword: data.uvPassword || null,
-    },
-  });
+  try {
+    const created = await prisma.candidate.create({
+      data: {
+        fullName: data.fullName,
+        email: data.email.toLowerCase(),
+        phone: data.phone,
+        personalLinkedIn: data.personalLinkedIn,
+        profilePhotoUrl: data.profilePhotoUrl || null,
+        resumeUrl: resumeUrl ? resumeUrl : null,
+        skills: data.skills,
+        experienceYears: data.experienceYears,
+        location: data.location,
+        noticePeriod: data.noticePeriod,
+        expectedCTC: data.expectedCTC,
+        status: data.status as CandidateStatus,
+        recruiterId: user.role === "admin" ? data.recruiterId : user.id,
+        addedBy: session?.user?.email ?? "system",
+        uvPhone: data.uvPhone || null,
+        uvPassword: data.uvPassword || null,
+      },
+    });
 
-  revalidatePath("/dashboard/candidates");
-  revalidatePath("/admin/candidates");
-  return { success: true, data: created };
+    revalidatePath("/dashboard/candidates");
+    revalidatePath("/admin/candidates");
+    return { success: true, data: created };
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      throw new Error("A candidate with this email already exists");
+    }
+    throw error;
+  }
 }
 
 export async function updateCandidateAction(payload: unknown) {
