@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ChangeEvent, DragEvent, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -93,9 +93,12 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   const [skillInput, setSkillInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showUvPassword, setShowUvPassword] = useState(false);
-  const [resumeUpload, setResumeUpload] = useState<{ name: string; url: string; size: number } | null>(null);
-  const [isUploadingResume, setIsUploadingResume] = useState(false);
-  const resumeInputRef = useRef<HTMLInputElement>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeUrl, setResumeUrl] = useState("");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadError, setUploadError] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -142,89 +145,89 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   );
 
   const noticePeriod = watch("noticePeriod");
-  const resumeUrlValue = watch("resumeUrl");
 
-  const resetResumeInput = () => {
-    if (resumeInputRef.current) {
-      resumeInputRef.current.value = "";
-    }
-  };
-
-  const uploadResume = async (file: File) => {
-    if (isUploadingResume) return;
-
+  const handleFileUpload = async (file: File) => {
     if (!RESUME_MIME_TYPES.includes(file.type)) {
-      toast.error("Please upload a PDF or Word document");
-      resetResumeInput();
+      setUploadStatus("error");
+      setUploadError("Only PDF or DOCX files are allowed");
       return;
     }
 
     if (file.size > MAX_RESUME_SIZE_BYTES) {
-      toast.error("Resume must be 5MB or smaller");
-      resetResumeInput();
+      setUploadStatus("error");
+      setUploadError("File size must be less than 5MB");
       return;
     }
 
-    setIsUploadingResume(true);
+    setResumeFile(file);
+    setUploadStatus("uploading");
+    setUploadError("");
+
     try {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("candidateName", watch("name") || "Candidate");
+
       const response = await fetch("/api/uploads/resume", {
         method: "POST",
         body: formData,
       });
-      const payload = await response.json().catch(() => null) as { url?: string; error?: string } | null;
-      if (!response.ok || !payload?.url) {
-        throw new Error(payload?.error ?? "Unable to upload resume");
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
       }
-      setResumeUpload({ name: file.name, url: payload.url, size: file.size });
-      setValue("resumeUrl", payload.url, { shouldValidate: false });
-      toast.success("Resume uploaded");
+
+      setResumeUrl(data.url);
+      setUploadStatus("success");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to upload resume");
-    } finally {
-      setIsUploadingResume(false);
-      resetResumeInput();
+      setUploadStatus("error");
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+      setResumeFile(null);
+      setResumeUrl("");
     }
   };
 
-  const handleResumeInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      await uploadResume(file);
-    }
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
   };
 
-  const handleResumeDrop = async (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    if (isUploadingResume) return;
-    const file = event.dataTransfer.files?.[0];
-    if (file) {
-      await uploadResume(file);
-    }
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
   };
 
-  const handleResumeDragOver = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileUpload(file);
   };
 
   const handleRemoveResume = () => {
-    setResumeUpload(null);
-    setValue("resumeUrl", "", { shouldValidate: false });
-    toast.info("Resume removed");
-    resetResumeInput();
-  };
-
-  const handleResumeZoneClick = () => {
-    if (!isUploadingResume) {
-      resumeInputRef.current?.click();
+    setResumeFile(null);
+    setResumeUrl("");
+    setUploadStatus("idle");
+    setUploadError("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
   // Submit
   const onSubmit = async (data: CandidateFormValues) => {
+    if (uploadStatus === "uploading") {
+      toast.warning("Please wait for resume upload to complete");
+      return;
+    }
+
     try {
       // For non-admins, auto-assign themselves (only recruiter in the list)
       const selectedRecruiter = isAdmin
@@ -254,7 +257,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
         uvPassword: data.uvPassword || null,
       };
 
-      payload.resumeUrl = data.resumeUrl?.trim() ?? "";
+      payload.resumeUrl = resumeUrl || "";
 
       await createCandidateAction(payload);
 
@@ -378,93 +381,136 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Resume Upload */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label>
-              Resume Upload <span className="text-orange-500 text-xs">(optional)</span>
+              Resume Upload <span className="text-muted-foreground ml-1 text-xs">(optional)</span>
             </Label>
-            <input type="hidden" {...register("resumeUrl")} />
+
+            {/* Hidden file input — triggers file picker on click */}
             <input
-              ref={resumeInputRef}
+              ref={fileInputRef}
               type="file"
-              accept={RESUME_ACCEPT_ATTR}
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleFileInputChange}
               className="hidden"
-              onChange={handleResumeInputChange}
+              aria-label="Upload resume"
             />
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={handleResumeZoneClick}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  handleResumeZoneClick();
-                }
-              }}
-              onDrop={handleResumeDrop}
-              onDragOver={handleResumeDragOver}
-              className={`flex w-full h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary ${
-                resumeUrlValue ? "border-primary/40 bg-primary/5" : "border-muted-foreground/30 bg-muted/30 hover:border-primary/50"
-              }`}
-            >
-              {isUploadingResume ? (
-                <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  Uploading resume...
-                </div>
-              ) : resumeUrlValue ? (
-                <div className="flex w-full items-center justify-between gap-4 px-4 text-left">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold truncate">{resumeUpload?.name ?? resumeUrlValue.split("/").pop()}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {resumeUpload?.size ? formatFileSize(resumeUpload.size) : "Resume uploaded"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground/80 break-all">
-                      {resumeUrlValue}
-                    </p>
+
+            {/* IDLE STATE — upload zone */}
+            {uploadStatus === "idle" && (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all duration-200 ${
+                  isDragOver
+                    ? "border-yellow-400 bg-yellow-400/10 scale-[1.01]"
+                    : "border-border hover:border-yellow-400 hover:bg-yellow-400/5"
+                }`}
+              >
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-12 h-12 rounded-full bg-yellow-400/10 flex items-center justify-center">
+                    <Upload className="w-6 h-6 text-yellow-400" />
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                        if (typeof window !== "undefined") {
-                          window.open(resumeUrlValue, "_blank", "noopener,noreferrer");
-                        }
-                      }}
+                  <div>
+                    <p className="text-sm font-medium">Click to upload or drag &amp; drop</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF or DOCX up to 5MB</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* UPLOADING STATE */}
+            {uploadStatus === "uploading" && (
+              <div className="border-2 border-dashed border-yellow-400 rounded-lg p-8 text-center bg-yellow-400/5">
+                <div className="flex flex-col items-center gap-3">
+                  <Loader2 className="w-8 h-8 text-yellow-400 animate-spin" />
+                  <p className="text-sm font-medium text-yellow-400">Uploading resume...</p>
+                  <p className="text-xs text-muted-foreground">{resumeFile?.name}</p>
+                  <div className="w-full bg-border rounded-full h-1.5">
+                    <div className="bg-yellow-400 h-1.5 rounded-full animate-pulse w-3/4" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SUCCESS STATE */}
+            {uploadStatus === "success" && (
+              <div className="border-2 border-green-500/50 rounded-lg p-4 bg-green-500/5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-green-500">Resume uploaded successfully</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{resumeFile?.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {resumeFile ? `${(resumeFile.size / 1024).toFixed(1)} KB` : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={resumeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       View
-                    </Button>
-                    <Button
+                    </a>
+                    <button
                       type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        event.preventDefault();
-                        handleRemoveResume();
-                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveResume}
+                      className="text-xs px-3 py-1.5 rounded-md border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       Remove
-                    </Button>
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center px-4">
-                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-muted-foreground">
-                    Drag and drop resume here or click to browse
-                  </p>
-                  <p className="text-xs text-muted-foreground">PDF or DOCX up to 5MB</p>
+              </div>
+            )}
+
+            {/* ERROR STATE */}
+            {uploadStatus === "error" && (
+              <div className="border-2 border-red-500/50 rounded-lg p-4 bg-red-500/5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-500">Upload failed</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{uploadError}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadStatus("idle");
+                      setUploadError("");
+                      fileInputRef.current?.click();
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+                  >
+                    Try Again
+                  </button>
                 </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {resumeUrlValue ? "Click the card to replace the uploaded resume or remove it to start over." : "We accept PDF, DOC, or DOCX files up to 5MB."}
-            </p>
+              </div>
+            )}
           </div>
 
           {/* Skills Tags */}
