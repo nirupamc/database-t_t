@@ -147,6 +147,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   const noticePeriod = watch("noticePeriod");
 
   const handleFileUpload = async (file: File) => {
+    console.log("[Upload] Starting upload, no form submit");
     if (!RESUME_MIME_TYPES.includes(file.type)) {
       setUploadStatus("error");
       setUploadError("Only PDF or DOCX files are allowed");
@@ -190,22 +191,32 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    console.log("[FileInput] File selected, no page refresh");
     const file = e.target.files?.[0];
-    if (file) handleFileUpload(file);
+    if (file) {
+      console.log("[FileInput] Starting upload for:", file.name);
+      handleFileUpload(file);
+    }
+    // Reset the input value so same file can be selected again if needed
+    e.target.value = "";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFileUpload(file);
@@ -390,16 +401,22 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".pdf,.doc,.docx"
               onChange={handleFileInputChange}
+              onClick={(e) => e.stopPropagation()}
               className="hidden"
+              style={{ display: "none" }}
               aria-label="Upload resume"
             />
 
             {/* IDLE STATE — upload zone */}
             {uploadStatus === "idle" && (
               <div
-                onClick={() => fileInputRef.current?.click()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
@@ -465,7 +482,11 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
                     </a>
                     <button
                       type="button"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
                       className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-yellow-400 hover:text-yellow-400 transition-colors"
                     >
                       Replace
@@ -499,7 +520,9 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setUploadStatus("idle");
                       setUploadError("");
                       fileInputRef.current?.click();
