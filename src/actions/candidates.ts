@@ -75,6 +75,8 @@ export async function createCandidateAction(payload: unknown) {
   const session = await getCurrentSession();
   const user = await requireRecruiterOrAdmin();
   const data = parseOrThrow(candidateSchema, payload);
+  data.resumeUrl = data.resumeUrl?.trim() ?? null;
+  const resumeUrl = data.resumeUrl?.trim();
 
   const created = await prisma.candidate.create({
     data: {
@@ -83,7 +85,7 @@ export async function createCandidateAction(payload: unknown) {
       phone: data.phone,
       personalLinkedIn: data.personalLinkedIn,
       profilePhotoUrl: data.profilePhotoUrl || null,
-      resumeUrl: data.resumeUrl || null,
+      resumeUrl: resumeUrl || null,
       skills: data.skills,
       experienceYears: data.experienceYears,
       location: data.location,
@@ -115,6 +117,14 @@ export async function updateCandidateAction(payload: unknown) {
     throw new Error("Forbidden");
   }
 
+  const normalizedResumeUrl = data.resumeUrl?.trim();
+  data.resumeUrl =
+    normalizedResumeUrl && normalizedResumeUrl.length > 0
+      ? normalizedResumeUrl
+      : existing.resumeUrl ?? null;
+
+  const trimmedResumeUrl = data.resumeUrl?.trim();
+
   const updated = await prisma.candidate.update({
     where: { id: data.id },
     data: {
@@ -123,7 +133,7 @@ export async function updateCandidateAction(payload: unknown) {
       phone: data.phone,
       personalLinkedIn: data.personalLinkedIn,
       profilePhotoUrl: data.profilePhotoUrl || null,
-      resumeUrl: data.resumeUrl || null,
+      resumeUrl: trimmedResumeUrl ?? existing.resumeUrl,
       skills: data.skills,
       experienceYears: data.experienceYears,
       location: data.location,

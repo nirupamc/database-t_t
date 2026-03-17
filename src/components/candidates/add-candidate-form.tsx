@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Camera,
+  Loader2,
   Upload,
   X,
   MapPin,
@@ -51,6 +52,7 @@ const candidateSchema = z.object({
   quickNotes: z.string().optional(),
   uvPhone: z.string().optional(),
   uvPassword: z.string().optional(),
+  resumeUrl: z.string().optional(),
 });
 
 type CandidateFormValues = z.infer<typeof candidateSchema>;
@@ -68,6 +70,22 @@ const skillSuggestions = [
   "DevOps", "REST APIs", "GraphQL", "MongoDB", "PostgreSQL", "DynamoDB",
 ];
 
+const RESUME_ACCEPT_ATTR = ".pdf,.doc,.docx";
+const RESUME_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+
+function formatFileSize(bytes: number) {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / Math.pow(1024, index);
+  return `${index === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[index]}`;
+}
+
 /** Add New Candidate form */
 export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: RecruiterOption[]; isAdmin?: boolean }) {
   const router = useRouter();
@@ -75,6 +93,9 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
   const [skillInput, setSkillInput] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showUvPassword, setShowUvPassword] = useState(false);
+  const [resumeUpload, setResumeUpload] = useState<{ name: string; url: string; size: number } | null>(null);
+  const [isUploadingResume, setIsUploadingResume] = useState(false);
+  const resumeInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -86,6 +107,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
     resolver: zodResolver(candidateSchema),
     defaultValues: {
       noticePeriod: "Immediate",
+      resumeUrl: "",
     },
   });
 
@@ -119,6 +141,87 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
       !skills.includes(s)
   );
 
+  const noticePeriod = watch("noticePeriod");
+  const resumeUrlValue = watch("resumeUrl");
+
+  const resetResumeInput = () => {
+    if (resumeInputRef.current) {
+      resumeInputRef.current.value = "";
+    }
+  };
+
+  const uploadResume = async (file: File) => {
+    if (isUploadingResume) return;
+
+    if (!RESUME_MIME_TYPES.includes(file.type)) {
+      toast.error("Please upload a PDF or Word document");
+      resetResumeInput();
+      return;
+    }
+
+    if (file.size > MAX_RESUME_SIZE_BYTES) {
+      toast.error("Resume must be 10MB or smaller");
+      resetResumeInput();
+      return;
+    }
+
+    setIsUploadingResume(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/uploads/resume", {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null) as { url?: string; error?: string } | null;
+      if (!response.ok || !payload?.url) {
+        throw new Error(payload?.error ?? "Unable to upload resume");
+      }
+      setResumeUpload({ name: file.name, url: payload.url, size: file.size });
+      setValue("resumeUrl", payload.url, { shouldValidate: false });
+      toast.success("Resume uploaded");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to upload resume");
+    } finally {
+      setIsUploadingResume(false);
+      resetResumeInput();
+    }
+  };
+
+  const handleResumeInputChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      await uploadResume(file);
+    }
+  };
+
+  const handleResumeDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    if (isUploadingResume) return;
+    const file = event.dataTransfer.files?.[0];
+    if (file) {
+      await uploadResume(file);
+    }
+  };
+
+  const handleResumeDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleRemoveResume = () => {
+    setResumeUpload(null);
+    setValue("resumeUrl", "", { shouldValidate: false });
+    toast.info("Resume removed");
+    resetResumeInput();
+  };
+
+  const handleResumeZoneClick = () => {
+    if (!isUploadingResume) {
+      resumeInputRef.current?.click();
+    }
+  };
+
   // Submit
   const onSubmit = async (data: CandidateFormValues) => {
     try {
@@ -132,7 +235,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
         return;
       }
 
-      await createCandidateAction({
+      const payload = {
         fullName: data.name,
         email: data.email,
         phone: data.phone || "NA",
@@ -148,7 +251,11 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
         recruiterId: selectedRecruiter.id,
         uvPhone: data.uvPhone || null,
         uvPassword: data.uvPassword || null,
-      });
+      };
+
+      payload.resumeUrl = data.resumeUrl?.trim() ?? "";
+
+      await createCandidateAction(payload);
 
       toast.success("Candidate created successfully!", {
         description: `${data.name} has been added to the pipeline.`,
@@ -158,8 +265,6 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
       toast.error(error instanceof Error ? error.message : "Failed to create candidate");
     }
   };
-
-  const noticePeriod = watch("noticePeriod");
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 max-w-3xl mx-auto">
@@ -276,15 +381,89 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
             <Label>
               Resume Upload <span className="text-orange-500 text-xs">(optional)</span>
             </Label>
-            <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 cursor-pointer hover:border-primary/50 transition-colors">
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Drag and drop resume here
-                </p>
-                <p className="text-xs text-muted-foreground">PDF or DOCX up to 10MB</p>
-              </div>
+            <input type="hidden" {...register("resumeUrl")} />
+            <input
+              ref={resumeInputRef}
+              type="file"
+              accept={RESUME_ACCEPT_ATTR}
+              className="hidden"
+              onChange={handleResumeInputChange}
+            />
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handleResumeZoneClick}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleResumeZoneClick();
+                }
+              }}
+              onDrop={handleResumeDrop}
+              onDragOver={handleResumeDragOver}
+              className={`flex w-full h-32 items-center justify-center rounded-lg border-2 border-dashed transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary ${
+                resumeUrlValue ? "border-primary/40 bg-primary/5" : "border-muted-foreground/30 bg-muted/30 hover:border-primary/50"
+              }`}
+            >
+              {isUploadingResume ? (
+                <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  Uploading resume...
+                </div>
+              ) : resumeUrlValue ? (
+                <div className="flex w-full items-center justify-between gap-4 px-4 text-left">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold truncate">{resumeUpload?.name ?? resumeUrlValue.split("/").pop()}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {resumeUpload?.size ? formatFileSize(resumeUpload.size) : "Resume uploaded"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80 break-all">
+                      {resumeUrlValue}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        if (typeof window !== "undefined") {
+                          window.open(resumeUrlValue, "_blank", "noopener,noreferrer");
+                        }
+                      }}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        handleRemoveResume();
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center px-4">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Drag and drop resume here or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground">PDF or DOCX up to 10MB</p>
+                </div>
+              )}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {resumeUrlValue ? "Click the card to replace the uploaded resume or remove it to start over." : "We accept PDF, DOC, or DOCX files up to 10MB."}
+            </p>
           </div>
 
           {/* Skills Tags */}
