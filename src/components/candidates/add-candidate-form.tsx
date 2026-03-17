@@ -76,7 +76,7 @@ const RESUME_MIME_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
-const MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 function formatFileSize(bytes: number) {
   if (!bytes) return "0 B";
@@ -160,7 +160,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
     }
 
     if (file.size > MAX_RESUME_SIZE_BYTES) {
-      toast.error("Resume must be 10MB or smaller");
+      toast.error("Resume must be 5MB or smaller");
       resetResumeInput();
       return;
     }
@@ -169,6 +169,7 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
     try {
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("candidateName", watch("name") || "Candidate");
       const response = await fetch("/api/uploads/resume", {
         method: "POST",
         body: formData,
@@ -457,12 +458,12 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
                   <p className="text-sm font-medium text-muted-foreground">
                     Drag and drop resume here or click to browse
                   </p>
-                  <p className="text-xs text-muted-foreground">PDF or DOCX up to 10MB</p>
+                  <p className="text-xs text-muted-foreground">PDF or DOCX up to 5MB</p>
                 </div>
               )}
             </div>
             <p className="text-xs text-muted-foreground">
-              {resumeUrlValue ? "Click the card to replace the uploaded resume or remove it to start over." : "We accept PDF, DOC, or DOCX files up to 10MB."}
+              {resumeUrlValue ? "Click the card to replace the uploaded resume or remove it to start over." : "We accept PDF, DOC, or DOCX files up to 5MB."}
             </p>
           </div>
 

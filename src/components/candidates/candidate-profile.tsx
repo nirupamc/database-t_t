@@ -13,6 +13,7 @@ import {
   Phone,
   Pencil,
   FileDown,
+  FileText,
   Code2,
   Briefcase,
   DollarSign,
@@ -72,7 +73,22 @@ function CandidateHero({ candidate }: { candidate: Candidate }) {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
+            {candidate.resumeUrl ? (
+              <a
+                href={candidate.resumeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10">
+                  <FileText className="h-4 w-4 mr-1" /> View Resume
+                </Button>
+              </a>
+            ) : (
+              <Button variant="outline" size="sm" disabled className="opacity-50">
+                <FileText className="h-4 w-4 mr-1" /> No Resume
+              </Button>
+            )}
             <Button variant="outline" size="sm">
               <Pencil className="h-4 w-4 mr-1" /> Edit Profile
             </Button>
