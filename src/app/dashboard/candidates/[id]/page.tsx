@@ -21,7 +21,8 @@ export default async function CandidatePage({
     include: {
       recruiter: true,
       applications: {
-        include: { rounds: true },
+        orderBy: { createdAt: "desc" },
+        include: { rounds: { orderBy: { createdAt: "asc" } } },
       },
     },
   });
@@ -29,6 +30,12 @@ export default async function CandidatePage({
   if (!candidate) {
     notFound();
   }
+
+  console.log("[CandidateDetail] Applications fetched:", candidate.applications.length);
+  console.log(
+    "[CandidateDetail] Total rounds:",
+    candidate.applications.reduce((sum, app) => sum + (app.rounds?.length ?? 0), 0)
+  );
 
   if (session.user.role !== "admin" && candidate.recruiterId !== session.user.id) {
     notFound();

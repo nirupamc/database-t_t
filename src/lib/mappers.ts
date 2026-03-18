@@ -30,9 +30,10 @@ type CandidateWithRelations = {
       timezone: string;
       duration: string;
       mode: string;
-      vcReceiver: string;
+      vcReceiver: string | null;
       feedback: string | null;
       roundStatus: string;
+      createdAt: Date;
     }>;
   }>;
   recruiter: {
@@ -54,7 +55,7 @@ function mapRound(round: CandidateWithRelations["applications"][number]["rounds"
     timezone: round.timezone,
     duration: round.duration,
     mode: (round.mode as InterviewRound["mode"]) ?? "Video Call (Google Meet)",
-    vcReceiver: round.vcReceiver,
+    vcReceiver: round.vcReceiver ?? "",
     frontendCoordinator: "Coordinator",
     lipsyncQuality: "Good",
     feedback: round.feedback ?? "",
