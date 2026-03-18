@@ -10,6 +10,7 @@ import {
   Settings,
   Menu,
   X,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard/candidates", label: "My Candidates", icon: Users },
   { href: "/add-candidate", label: "Add New Candidate", icon: UserPlus },
   { href: "/dashboard/applications", label: "All Applications", icon: FileText },
+  { href: "/dashboard/resume-studio", label: "Resume Studio", icon: Sparkles },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

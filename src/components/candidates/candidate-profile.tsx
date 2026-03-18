@@ -25,7 +25,6 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { ApplicationsList } from "./applications-list";
-import ResumeStudioTab from "./resume-studio-tab";
 import type { Candidate } from "@/types";
 
 /** Hero section with candidate info */
@@ -231,9 +230,6 @@ export function CandidateProfile({ candidate }: { candidate: Candidate }) {
           <TabsTrigger value="notes">
             📒 Notes
           </TabsTrigger>
-          <TabsTrigger value="resume-studio">
-            🎯 Resume Studio
-          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-4">
@@ -259,14 +255,6 @@ export function CandidateProfile({ candidate }: { candidate: Candidate }) {
 
         <TabsContent value="notes" className="mt-4">
           <NotesTab candidate={candidate} />
-        </TabsContent>
-
-        <TabsContent value="resume-studio" className="mt-4">
-          <ResumeStudioTab
-            candidateId={candidate.id}
-            candidateName={candidate.name}
-            resumeUrl={candidate.resumeUrl}
-          />
         </TabsContent>
       </Tabs>
     </div>
