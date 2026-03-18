@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/employees", label: "Employees", icon: Users },
   { href: "/admin/candidates", label: "Candidates", icon: UserRound },
+  { href: "/dashboard/resume-studio", label: "Resume Studio", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
