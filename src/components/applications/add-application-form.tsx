@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -46,6 +46,7 @@ import {
 } from "@/components/applications/round-form-block";
 import type { Candidate } from "@/types";
 import { createApplicationAction } from "@/actions/applications";
+import { getOptimizedResumesAction } from "@/actions/resume-studio";
 
 // ── Zod schema ──
 const applicationSchema = z.object({
@@ -58,6 +59,7 @@ const applicationSchema = z.object({
   applicationDate: z.string().min(1, "Application date is required"),
   status: z.string().min(1, "Status is required"),
   quickNotes: z.string().optional(),
+  resumeUrl: z.string().optional(),
 });
 
 type ApplicationFormValues = z.infer<typeof applicationSchema>;
@@ -86,6 +88,26 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
   // ── Status tracking for conditional accordion ──
   const [currentStatus, setCurrentStatus] = useState("Applied");
 
+  // ── Resume options state ──
+  const [optimizedResumes, setOptimizedResumes] = useState<any[]>([]);
+  const [isLoadingResumes, setIsLoadingResumes] = useState(true);
+
+  // Load optimized resumes
+  useEffect(() => {
+    const loadOptimizedResumes = async () => {
+      try {
+        const data = await getOptimizedResumesAction(candidate.id);
+        setOptimizedResumes(data);
+      } catch (error) {
+        console.error('Failed to load optimized resumes:', error);
+      } finally {
+        setIsLoadingResumes(false);
+      }
+    };
+
+    loadOptimizedResumes();
+  }, [candidate.id]);
+
   const {
     register,
     handleSubmit,
@@ -97,6 +119,7 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
     defaultValues: {
       applicationDate: new Date().toISOString().split("T")[0],
       status: "Applied",
+      resumeUrl: candidate.resumeUrl || "",
     },
   });
 
@@ -296,6 +319,49 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
             </Select>
             {errors.status && (
               <p className="text-xs text-destructive">{errors.status.message}</p>
+            )}
+          </div>
+
+          {/* Resume Version Selector */}
+          <div className="space-y-1.5">
+            <Label>
+              Resume to Submit
+            </Label>
+            <Select 
+              value={watch("resumeUrl") || ""}
+              onValueChange={(value) => setValue("resumeUrl", value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select resume version" />
+              </SelectTrigger>
+              <SelectContent>
+                {/* Original Resume Option */}
+                {candidate.resumeUrl && (
+                  <SelectItem value={candidate.resumeUrl}>
+                    📄 Original Resume
+                  </SelectItem>
+                )}
+                
+                {/* Optimized Resume Options */}
+                {optimizedResumes.map((resume) => (
+                  <SelectItem 
+                    key={resume.id} 
+                    value={resume.optimizedResumeUrl || resume.originalResumeUrl}
+                  >
+                    📄 {resume.jobTitle}{resume.company ? ` @ ${resume.company}` : ''} - {resume.compatibilityScore}/10 - {new Date(resume.createdAt).toLocaleDateString()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!isLoadingResumes && optimizedResumes.length === 0 && candidate.resumeUrl && (
+              <p className="text-xs text-muted-foreground">
+                Optimize resume in Resume Studio tab to get more options
+              </p>
+            )}
+            {!candidate.resumeUrl && (
+              <p className="text-xs text-destructive">
+                No resume uploaded for this candidate
+              </p>
             )}
           </div>
         </CardContent>
