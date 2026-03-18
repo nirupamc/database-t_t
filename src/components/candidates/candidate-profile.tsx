@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { ApplicationsList } from "./applications-list";
+import ResumeStudioTab from "./resume-studio-tab";
 import type { Candidate } from "@/types";
 
 /** Hero section with candidate info */
@@ -75,15 +76,17 @@ function CandidateHero({ candidate }: { candidate: Candidate }) {
           {/* Actions */}
           <div className="flex gap-2 shrink-0 flex-wrap">
             {candidate.resumeUrl ? (
-              <a
-                href={candidate.resumeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-primary/50 text-primary hover:bg-primary/10"
+                onClick={() => window.open(
+                  `https://docs.google.com/viewer?url=${encodeURIComponent(candidate.resumeUrl)}`,
+                  '_blank'
+                )}
               >
-                <Button variant="outline" size="sm" className="border-primary/50 text-primary hover:bg-primary/10">
-                  <FileText className="h-4 w-4 mr-1" /> View Resume
-                </Button>
-              </a>
+                <FileText className="h-4 w-4 mr-1" /> View Resume
+              </Button>
             ) : (
               <Button variant="outline" size="sm" disabled className="opacity-50">
                 <FileText className="h-4 w-4 mr-1" /> No Resume
@@ -228,6 +231,9 @@ export function CandidateProfile({ candidate }: { candidate: Candidate }) {
           <TabsTrigger value="notes">
             📒 Notes
           </TabsTrigger>
+          <TabsTrigger value="resume-studio">
+            🎯 Resume Studio
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="mt-4">
@@ -253,6 +259,14 @@ export function CandidateProfile({ candidate }: { candidate: Candidate }) {
 
         <TabsContent value="notes" className="mt-4">
           <NotesTab candidate={candidate} />
+        </TabsContent>
+
+        <TabsContent value="resume-studio" className="mt-4">
+          <ResumeStudioTab
+            candidateId={candidate.id}
+            candidateName={candidate.name}
+            resumeUrl={candidate.resumeUrl}
+          />
         </TabsContent>
       </Tabs>
     </div>

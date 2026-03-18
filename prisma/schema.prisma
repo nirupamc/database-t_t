@@ -36,6 +36,11 @@ enum RoundStatus {
   FAILED
 }
 
+enum OptimizedResumeStatus {
+  SCORED
+  OPTIMIZED
+}
+
 model Recruiter {
   id              String      @id @default(cuid())
   name            String
@@ -55,6 +60,7 @@ model Recruiter {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   candidates      Candidate[]
+  optimizedResumes OptimizedResume[]
 
   @@index([role])
 }
@@ -81,6 +87,7 @@ model Candidate {
   updatedAt       DateTime        @updatedAt
   recruiter       Recruiter       @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
   applications    Application[]
+  optimizedResumes OptimizedResume[]
 
   @@index([recruiterId])
   @@index([status])
@@ -124,4 +131,22 @@ model Round {
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   @@index([applicationId])
+}
+
+model OptimizedResume {
+  id                  String   @id @default(cuid())
+  candidateId         String
+  candidate           Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiterId         String
+  recruiter           Recruiter @relation(fields: [recruiterId], references: [id])
+  jobTitle            String
+  company             String?
+  jobDescription      String   @db.Text
+  originalResumeUrl   String
+  optimizedResumeUrl  String?
+  compatibilityScore  Int
+  scoreBreakdown      Json
+  status              OptimizedResumeStatus @default(SCORED)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
