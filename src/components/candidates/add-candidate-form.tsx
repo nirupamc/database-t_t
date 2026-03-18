@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -28,6 +28,8 @@ import {
   MapPin,
   Eye,
   EyeOff,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import { createCandidateAction } from "@/actions/candidates";
 
@@ -76,6 +78,14 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showUvPassword, setShowUvPassword] = useState(false);
 
+  // ── Resume upload state ──
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [resumeUrl, setResumeUrl] = useState<string>("");
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadError, setUploadError] = useState<string>("");
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -89,7 +99,93 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
     },
   });
 
-  // Add a skill tag
+  // ── Resume upload handlers ──
+  const handleFileUpload = async (file: File) => {
+    const allowedTypes = [
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/pdf",
+      "application/msword",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadStatus("error");
+      setUploadError("Only PDF or DOCX files are allowed");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadStatus("error");
+      setUploadError("File size must be less than 5MB");
+      return;
+    }
+
+    setResumeFile(file);
+    setUploadStatus("uploading");
+    setUploadError("");
+
+    try {
+      const candidateName = watch("name") || "Candidate";
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("candidateName", candidateName);
+
+      const response = await fetch("/api/uploads/resume", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setResumeUrl(data.url);
+      
+      setUploadStatus("success");
+      toast.success("Resume uploaded successfully!");
+    } catch (error) {
+      setUploadStatus("error");
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
+      setResumeFile(null);
+      setResumeUrl("");
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation();
+    const file = e.target.files?.[0];
+    if (file) handleFileUpload(file);
+    e.target.value = "";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileUpload(file);
+  };
+
+  const handleRemoveResume = () => {
+    setResumeFile(null);
+    setResumeUrl("");
+    setUploadStatus("idle");
+    setUploadError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  // ── Skill handlers ──
   const addSkill = (skill: string) => {
     const trimmed = skill.trim();
     if (trimmed && !skills.includes(trimmed)) {
@@ -99,12 +195,10 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
     setShowSuggestions(false);
   };
 
-  // Remove skill tag
   const removeSkill = (skill: string) => {
     setSkills(skills.filter((s) => s !== skill));
   };
 
-  // Handle skill input keydown
   const handleSkillKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
@@ -112,17 +206,23 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
     }
   };
 
-  // Filtered suggestions
   const filtered = skillSuggestions.filter(
     (s) =>
       s.toLowerCase().includes(skillInput.toLowerCase()) &&
       !skills.includes(s)
   );
 
-  // Submit
+  // ── Form submit ──
   const onSubmit = async (data: CandidateFormValues) => {
+    if (uploadStatus === "uploading") {
+      toast.warning("Please wait for resume upload to complete");
+      return;
+    }
+
     try {
-      const selectedRecruiter = recruiters.find((recruiter) => recruiter.name === data.assignedRecruiter);
+      const selectedRecruiter = recruiters.find(
+        (recruiter) => recruiter.name === data.assignedRecruiter
+      );
 
       if (!selectedRecruiter) {
         toast.error("Please select a recruiter");
@@ -133,9 +233,11 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         fullName: data.name,
         email: data.email,
         phone: data.phone || "NA",
-        personalLinkedIn: data.linkedIn.startsWith("http") ? data.linkedIn : `https://${data.linkedIn}`,
+        personalLinkedIn: data.linkedIn.startsWith("http")
+          ? data.linkedIn
+          : `https://${data.linkedIn}`,
         profilePhotoUrl: "",
-        resumeUrl: "",
+        resumeUrl: resumeUrl || "",
         skills,
         experienceYears: Number(data.yearsOfExperience || 0),
         location: data.location || "Unknown",
@@ -152,7 +254,9 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
       });
       router.push("/dashboard/candidates");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create candidate");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create candidate"
+      );
     }
   };
 
@@ -183,35 +287,30 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
               <CardTitle>Personal Information</CardTitle>
               <CardDescription>Contact details and identity</CardDescription>
             </div>
-            {/* Upload Photo placeholder */}
             <div className="flex flex-col items-center gap-1">
               <Avatar className="h-16 w-16 border-2 border-dashed border-muted-foreground/30 cursor-pointer hover:border-primary/50 transition-colors">
                 <AvatarFallback className="bg-muted text-muted-foreground">
                   <Camera className="h-6 w-6" />
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-muted-foreground">Upload Photo <span className="text-orange-500">(optional)</span></span>
+              <span className="text-xs text-muted-foreground">
+                Upload Photo <span className="text-orange-500">(optional)</span>
+              </span>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
             <div className="space-y-1.5">
               <Label htmlFor="name">
                 Full Name <span className="text-destructive">*</span>
               </Label>
-              <Input
-                id="name"
-                placeholder="John Doe"
-                {...register("name")}
-              />
+              <Input id="name" placeholder="John Doe" {...register("name")} />
               {errors.name && (
                 <p className="text-xs text-destructive">{errors.name.message}</p>
               )}
             </div>
 
-            {/* Email */}
             <div className="space-y-1.5">
               <Label htmlFor="email">
                 Email Address <span className="text-destructive">*</span>
@@ -227,10 +326,10 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
               )}
             </div>
 
-            {/* Phone */}
             <div className="space-y-1.5">
               <Label htmlFor="phone">
-                Phone Number <span className="text-orange-500 text-xs">(optional)</span>
+                Phone Number{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <Input
                 id="phone"
@@ -239,7 +338,6 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
               />
             </div>
 
-            {/* LinkedIn */}
             <div className="space-y-1.5">
               <Label htmlFor="linkedIn">
                 LinkedIn URL <span className="text-destructive">*</span>
@@ -251,7 +349,9 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
                   className="pl-8"
                   {...register("linkedIn")}
                 />
-                <span className="absolute left-2.5 top-2 text-muted-foreground text-sm">🔗</span>
+                <span className="absolute left-2.5 top-2 text-muted-foreground text-sm">
+                  🔗
+                </span>
               </div>
               {errors.linkedIn && (
                 <p className="text-xs text-destructive">{errors.linkedIn.message}</p>
@@ -268,30 +368,178 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
           <CardDescription>Resume, experience and expectations</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Resume Upload */}
+
+          {/* ── Resume Upload ── */}
           <div className="space-y-1.5">
             <Label>
-              Resume Upload <span className="text-orange-500 text-xs">(optional)</span>
+              Resume Upload{" "}
+              <span className="text-orange-500 text-xs">(optional)</span>
             </Label>
-            <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-muted-foreground/30 rounded-lg bg-muted/30 cursor-pointer hover:border-primary/50 transition-colors">
-              <div className="text-center">
-                <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm font-medium text-muted-foreground">
-                  Drag and drop resume here
-                </p>
-                <p className="text-xs text-muted-foreground">PDF or DOCX up to 10MB</p>
+
+            {/* Hidden file input — THIS is what opens the file picker */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx"
+              onChange={handleFileInputChange}
+              onClick={(e) => e.stopPropagation()}
+              style={{ display: "none" }}
+            />
+
+            {/* IDLE STATE */}
+            {uploadStatus === "idle" && (
+              <div
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`
+                  flex items-center justify-center w-full h-32
+                  border-2 border-dashed rounded-lg cursor-pointer
+                  transition-all duration-200 select-none
+                  ${isDragOver
+                    ? "border-yellow-400 bg-yellow-400/10"
+                    : "border-muted-foreground/30 bg-muted/30 hover:border-yellow-400 hover:bg-yellow-400/5"
+                  }
+                `}
+              >
+                <div className="text-center pointer-events-none">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {isDragOver ? "Drop file here" : "Click to upload or drag & drop"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PDF or DOCX up to 5MB
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* UPLOADING STATE */}
+            {uploadStatus === "uploading" && (
+              <div className="flex items-center justify-center w-full h-32 border-2 border-dashed border-yellow-400 rounded-lg bg-yellow-400/5">
+                <div className="text-center">
+                  <div className="w-8 h-8 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-sm font-medium text-yellow-400">
+                    Uploading...
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {resumeFile?.name}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* SUCCESS STATE */}
+            {uploadStatus === "success" && (
+              <div className="w-full border-2 border-dashed border-green-500/50 rounded-lg bg-green-500/5 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-green-500">
+                        Resume uploaded
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[180px]">
+                        {resumeFile?.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {resumeFile
+                          ? `${(resumeFile.size / 1024).toFixed(1)} KB`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={resumeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors"
+                    >
+                      View
+                    </a>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        fileInputRef.current?.click();
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleRemoveResume();
+                      }}
+                      className="text-xs px-3 py-1.5 rounded-md border border-red-500/50 text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ERROR STATE */}
+            {uploadStatus === "error" && (
+              <div className="w-full border-2 border-dashed border-red-500/50 rounded-lg bg-red-500/5 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                      <AlertCircle className="w-5 h-5 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-500">
+                        Upload failed
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {uploadError}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setUploadStatus("idle");
+                      setUploadError("");
+                      fileInputRef.current?.click();
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-md border border-yellow-400 text-yellow-400 hover:bg-yellow-400/10 transition-colors flex-shrink-0"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Skills Tags */}
           <div className="space-y-1.5">
             <Label>
-              Skills Tags <span className="text-orange-500 text-xs">(optional)</span>
+              Skills Tags{" "}
+              <span className="text-orange-500 text-xs">(optional)</span>
             </Label>
             <div className="flex flex-wrap items-center gap-1.5 p-2 border rounded-md min-h-[42px] bg-background">
               {skills.map((skill) => (
-                <Badge key={skill} className="bg-primary/10 text-primary border-primary/20 gap-1">
+                <Badge
+                  key={skill}
+                  className="bg-primary/10 text-primary border-primary/20 gap-1"
+                >
                   {skill}
                   <button
                     type="button"
@@ -312,11 +560,12 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
                   }}
                   onKeyDown={handleSkillKeyDown}
                   onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  onBlur={() =>
+                    setTimeout(() => setShowSuggestions(false), 200)
+                  }
                   placeholder="e.g. Java, Python, Salesforce, React, Node.js, AWS, DevOps..."
                   className="w-full border-none outline-none text-sm bg-transparent placeholder:text-muted-foreground"
                 />
-                {/* Suggestions dropdown */}
                 {showSuggestions && skillInput && filtered.length > 0 && (
                   <div className="absolute top-8 left-0 z-50 w-64 bg-popover border rounded-md shadow-md max-h-40 overflow-auto">
                     {filtered.map((s) => (
@@ -335,11 +584,12 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
             </div>
           </div>
 
-          {/* Experience + Location row */}
+          {/* Experience + Location */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="yearsOfExperience">
-                Years of Experience <span className="text-orange-500 text-xs">(optional)</span>
+                Years of Experience{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <Input
                 id="yearsOfExperience"
@@ -351,7 +601,8 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
 
             <div className="space-y-1.5">
               <Label htmlFor="location">
-                Location <span className="text-orange-500 text-xs">(optional)</span>
+                Location{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <div className="relative">
                 <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -369,13 +620,16 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>
-                Notice Period <span className="text-orange-500 text-xs">(optional)</span>
+                Notice Period{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <Select
                 value={noticePeriod}
                 onValueChange={(val) => setValue("noticePeriod", val)}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Immediate">Immediate</SelectItem>
                   <SelectItem value="15 Days">15 Days</SelectItem>
@@ -388,11 +642,14 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
 
             <div className="space-y-1.5">
               <Label htmlFor="expectedCtc">
-                Expected CTC (Annual) <span className="text-orange-500 text-xs">(optional)</span>
+                Expected CTC (Annual){" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <div className="flex gap-2">
                 <Select defaultValue="INR">
-                  <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-20">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="INR">₹</SelectItem>
                     <SelectItem value="USD">$</SelectItem>
@@ -419,10 +676,10 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
           <CardDescription>Internal assignment and notes</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Assigned Recruiter */}
           <div className="space-y-1.5">
             <Label>
-              Assigned Recruiter <span className="text-orange-500 text-xs">(optional)</span>
+              Assigned Recruiter{" "}
+              <span className="text-orange-500 text-xs">(optional)</span>
             </Label>
             <Select
               value={watch("assignedRecruiter")}
@@ -446,10 +703,10 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
             </Select>
           </div>
 
-          {/* Quick Notes */}
           <div className="space-y-1.5">
             <Label htmlFor="quickNotes">
-              Quick Notes <span className="text-orange-500 text-xs">(optional)</span>
+              Quick Notes{" "}
+              <span className="text-orange-500 text-xs">(optional)</span>
             </Label>
             <Textarea
               id="quickNotes"
@@ -475,7 +732,8 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="uvPhone">
-                UV Phone Number <span className="text-orange-500 text-xs">(optional)</span>
+                UV Phone Number{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <Input
                 id="uvPhone"
@@ -486,7 +744,8 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
 
             <div className="space-y-1.5">
               <Label htmlFor="uvPassword">
-                UV Password <span className="text-orange-500 text-xs">(optional)</span>
+                UV Password{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <div className="relative">
                 <Input
@@ -502,7 +761,11 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
                   className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
                 >
-                  {showUvPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showUvPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
