@@ -19,6 +19,8 @@ export async function getOptimizedResumesAction(candidateId: string) {
       status: true,
       originalResumeUrl: true,
       optimizedResumeUrl: true,
+      atsResumeUrl: true,
+      formattedResumeUrl: true,
       createdAt: true,
     }
   })

@@ -36,6 +36,8 @@ interface OptimizedResumeRecord {
   status: 'SCORED' | 'OPTIMIZED'
   originalResumeUrl: string
   optimizedResumeUrl: string | null
+  atsResumeUrl: string | null
+  formattedResumeUrl: string | null
   createdAt: Date
 }
 
@@ -422,34 +424,93 @@ export default function ResumeStudioTab({ candidateId, candidateName, resumeUrl 
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
+                    {/* Version availability indicators */}
+                    <div className="flex items-center gap-1 mt-1 mb-2">
+                      {record.atsResumeUrl && (
+                        <span className="text-xs px-1.5 py-0.5 bg-yellow-400/10 text-yellow-400 rounded border border-yellow-400/20">
+                          ATS
+                        </span>
+                      )}
+                      {record.formattedResumeUrl && (
+                        <span className="text-xs px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded border border-green-500/20">
+                          Formatted
+                        </span>
+                      )}
+                      {!record.atsResumeUrl && record.optimizedResumeUrl && (
+                        <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
+                          Legacy
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Action buttons for each record */}
+                    <div className="flex gap-2 flex-wrap items-center mt-3 pt-3 border-t border-border">
+                      {/* View Original */}
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
                         onClick={() => viewResumeInGoogleViewer(record.originalResumeUrl)}
+                        className="text-xs px-3 py-1.5 border border-border text-muted-foreground rounded-lg hover:border-yellow-400 hover:text-yellow-400 transition-colors"
                       >
-                        View Original
-                      </Button>
-                      {record.optimizedResumeUrl && (
-                        <Button
+                        📄 Original
+                      </button>
+
+                      {/* Smart button rendering based on available URLs */}
+                      {record.atsResumeUrl ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => viewResumeInGoogleViewer(record.atsResumeUrl!)}
+                            className="text-xs px-3 py-1.5 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-colors flex items-center gap-1"
+                          >
+                            🤖 ATS Version
+                          </button>
+                          {record.formattedResumeUrl && (
+                            <button
+                              type="button"
+                              onClick={() => viewResumeInGoogleViewer(record.formattedResumeUrl!)}
+                              className="text-xs px-3 py-1.5 border border-green-500/50 text-green-500 rounded-lg hover:bg-green-500/10 transition-colors flex items-center gap-1"
+                            >
+                              ✨ Formatted
+                            </button>
+                          )}
+                        </>
+                      ) : record.optimizedResumeUrl ? (
+                        <button
                           type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => viewResumeInGoogleViewer(record.optimizedResumeUrl)}
+                          onClick={() => viewResumeInGoogleViewer(record.optimizedResumeUrl!)}
+                          className="text-xs px-3 py-1.5 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-colors"
                         >
                           View Optimized
-                        </Button>
+                        </button>
+                      ) : null}
+
+                      {(record.atsResumeUrl || record.optimizedResumeUrl) && (
+                        <a
+                          href={record.atsResumeUrl || record.optimizedResumeUrl!}
+                          download
+                          className="text-xs px-3 py-1.5 border border-border text-muted-foreground rounded-lg hover:border-yellow-400 hover:text-yellow-400 transition-colors flex items-center gap-1"
+                        >
+                          ⬇ ATS
+                        </a>
                       )}
-                      <Button
+
+                      {record.formattedResumeUrl && (
+                        <a
+                          href={record.formattedResumeUrl}
+                          download
+                          className="text-xs px-3 py-1.5 border border-border text-muted-foreground rounded-lg hover:border-green-500 hover:text-green-500 transition-colors flex items-center gap-1"
+                        >
+                          ⬇ Formatted
+                        </a>
+                      )}
+
+                      <button
                         type="button"
-                        size="sm"
-                        variant="outline"
                         onClick={() => handleDelete(record.id)}
-                        className="text-red-400 hover:text-red-300"
+                        className="text-xs px-2 py-1.5 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors ml-auto"
                       >
                         Delete
-                      </Button>
+                      </button>
                     </div>
                   </CardContent>
                 </Card>
