@@ -456,35 +456,25 @@ export default function ResumeStudioTab({ candidateId, candidateName, resumeUrl 
                         📄 Original
                       </button>
 
-                      {/* Smart button rendering based on available URLs */}
-                      {record.atsResumeUrl ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => viewResumeInGoogleViewer(record.atsResumeUrl!)}
-                            className="text-xs px-3 py-1.5 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-colors flex items-center gap-1"
-                          >
-                            🤖 ATS Version
-                          </button>
-                          {record.formattedResumeUrl && (
-                            <button
-                              type="button"
-                              onClick={() => viewResumeInGoogleViewer(record.formattedResumeUrl!)}
-                              className="text-xs px-3 py-1.5 border border-green-500/50 text-green-500 rounded-lg hover:bg-green-500/10 transition-colors flex items-center gap-1"
-                            >
-                              ✨ Formatted
-                            </button>
-                          )}
-                        </>
-                      ) : record.optimizedResumeUrl ? (
+                      {/* Always show ATS + Formatted actions with fallback for legacy records */}
+                      {(record.atsResumeUrl || record.optimizedResumeUrl) && (
                         <button
                           type="button"
-                          onClick={() => viewResumeInGoogleViewer(record.optimizedResumeUrl!)}
-                          className="text-xs px-3 py-1.5 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-colors"
+                          onClick={() => viewResumeInGoogleViewer(record.atsResumeUrl || record.optimizedResumeUrl!)}
+                          className="text-xs px-3 py-1.5 border border-yellow-400 text-yellow-400 rounded-lg hover:bg-yellow-400/10 transition-colors flex items-center gap-1"
                         >
-                          View Optimized
+                          🤖 ATS Version
                         </button>
-                      ) : null}
+                      )}
+                      {(record.formattedResumeUrl || record.optimizedResumeUrl) && (
+                        <button
+                          type="button"
+                          onClick={() => viewResumeInGoogleViewer(record.formattedResumeUrl || record.optimizedResumeUrl!)}
+                          className="text-xs px-3 py-1.5 border border-green-500/50 text-green-500 rounded-lg hover:bg-green-500/10 transition-colors flex items-center gap-1"
+                        >
+                          ✨ Formatted
+                        </button>
+                      )}
 
                       {(record.atsResumeUrl || record.optimizedResumeUrl) && (
                         <a
@@ -496,9 +486,9 @@ export default function ResumeStudioTab({ candidateId, candidateName, resumeUrl 
                         </a>
                       )}
 
-                      {record.formattedResumeUrl && (
+                      {(record.formattedResumeUrl || record.optimizedResumeUrl) && (
                         <a
-                          href={record.formattedResumeUrl}
+                          href={record.formattedResumeUrl || record.optimizedResumeUrl!}
                           download
                           className="text-xs px-3 py-1.5 border border-border text-muted-foreground rounded-lg hover:border-green-500 hover:text-green-500 transition-colors flex items-center gap-1"
                         >
