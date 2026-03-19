@@ -11,7 +11,7 @@ async function main() {
   try {
     // First, update admin credentials
     console.log("=== Updating Admin Credentials ===");
-    const hashed = await bcrypt.hash("Tantech@Admin12", 10);
+    const hashed = await bcrypt.hash("Admin@Tantech23", 10);
     
     const existingAdmin = await prisma.recruiter.findFirst({
       where: { role: "ADMIN" },
@@ -40,7 +40,7 @@ async function main() {
     }
     
     console.log("  Email: admin@tantech.com");
-    console.log("  Password: Tantech@Admin12");
+    console.log("  Password: Admin@Tantech23");
     
     // Now show all users
     const users = await prisma.recruiter.findMany({
@@ -57,9 +57,9 @@ async function main() {
       where: { email: "admin@tantech.com" },
     });
     if (admin) {
-      const ok = await bcrypt.compare("Tantech@Admin12", admin.password);
+      const ok = await bcrypt.compare("Admin@Tantech23", admin.password);
       console.log("\n=== Password Verification ===");
-      console.log("  admin@tantech.com / Tantech@Admin12:", ok ? "✓ VALID" : "✗ INVALID");
+      console.log("  admin@tantech.com / Admin@Tantech23:", ok ? "✓ VALID" : "✗ INVALID");
     }
   } catch (e) {
     console.error("ERROR:", e.message);

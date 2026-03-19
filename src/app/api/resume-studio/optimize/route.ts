@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { extractTextFromDocx, optimizeResumeText, scoreResume } from '@/lib/resume-ai'
-import { generateOptimizedResumeDocx } from '@/lib/resume-docx'
+import { generateATSDocx, generateFormattedDocx } from '@/lib/resume-docx'
 import { put } from '@vercel/blob'
 import { updateOptimizedResumeAction } from '@/actions/resume-studio'
 
@@ -72,26 +72,55 @@ export async function POST(req: NextRequest) {
 
     console.log('[API optimize] Generated optimized text, length:', optimizedText.length)
 
-    // Generate DOCX file
-    const docxBuffer = await generateOptimizedResumeDocx(
-      optimizedText,
-      record.candidate.fullName,
-      record.jobTitle,
-      record.company || undefined
-    )
+    // Generate both versions
+    const [atsBuffer, formattedBuffer] = await Promise.all([
+      generateATSDocx(
+        optimizedText, 
+        record.candidate.fullName,
+        record.jobTitle,
+        record.company || ''
+      ),
+      generateFormattedDocx(
+        optimizedText,
+        record.candidate.fullName,
+        record.jobTitle,
+        record.company || ''
+      ),
+    ])
 
-    console.log('[API optimize] Generated DOCX, size:', docxBuffer.byteLength)
+    // Generate base filename
+    const cleanName = record.candidate.fullName
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .substring(0, 20)
+    const cleanTitle = record.jobTitle
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .substring(0, 20)
+    const cleanCompany = (record.company || 'General')
+      .replace(/[^a-zA-Z0-9]/g, '_')
+      .substring(0, 15)
+    const date = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    }).replace(/ /g, '')
 
-    // Upload to Vercel Blob
-    const timestamp = Date.now()
-    const filename = `resume-optimized-${record.candidate.fullName.replace(/\s+/g, '-')}-${timestamp}.docx`
-    
-    const blob = await put(filename, docxBuffer, {
-      access: 'public',
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    })
+    const docxType = 'application/vnd.openxmlformats-officedocument' +
+      '.wordprocessingml.document'
 
-    console.log('[API optimize] Uploaded to Blob:', blob.url)
+    // Upload both versions
+    const [atsBlob, formattedBlob] = await Promise.all([
+      put(
+        `optimized-resumes/ATS_${cleanName}_${cleanTitle}_${cleanCompany}_${date}.docx`,
+        atsBuffer,
+        { access: 'public', addRandomSuffix: true, contentType: docxType }
+      ),
+      put(
+        `optimized-resumes/Formatted_${cleanName}_${cleanTitle}_${cleanCompany}_${date}.docx`,
+        formattedBuffer,
+        { access: 'public', addRandomSuffix: true, contentType: docxType }
+      ),
+    ])
+
+    console.log('[Optimize] ATS version:', atsBlob.url)
+    console.log('[Optimize] Formatted version:', formattedBlob.url)
 
     // Re-score the optimized resume to get updated score
     const newScoreResult = await scoreResume(
@@ -103,18 +132,29 @@ export async function POST(req: NextRequest) {
 
     console.log('[API optimize] Re-scored optimized resume:', newScoreResult.overall)
 
-    // Update the record with optimized resume URL and new score
-    const updatedRecord = await updateOptimizedResumeAction(optimizedResumeId, {
-      optimizedResumeUrl: blob.url,
-      compatibilityScore: newScoreResult.overall,
-      scoreBreakdown: newScoreResult.breakdown,
+    // Update the database with the optimized result
+    const updated = await prisma.optimizedResume.update({
+      where: { id: optimizedResumeId },
+      data: {
+        optimizedResumeUrl: atsBlob.url,    // primary URL = ATS version
+        // TODO: Uncomment after running migration: npx prisma migrate dev --name add_dual_resume_urls
+        // atsResumeUrl: atsBlob.url,
+        // formattedResumeUrl: formattedBlob.url,
+        compatibilityScore: newScoreResult.overall,
+        scoreBreakdown: newScoreResult.breakdown,
+        status: 'OPTIMIZED',
+      }
     })
 
-    console.log('[API optimize] Record updated successfully')
+    console.log('[API optimize] Updated database record')
 
     return NextResponse.json({
-      optimizedResumeUrl: blob.url,
-      filename,
+      id: updated.id,
+      optimizedResumeUrl: atsBlob.url,
+      atsResumeUrl: atsBlob.url,
+      formattedResumeUrl: formattedBlob.url,
+      atsFilename: atsBlob.pathname,
+      formattedFilename: formattedBlob.pathname,
       score: newScoreResult,
     })
     

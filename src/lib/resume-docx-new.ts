@@ -47,7 +47,7 @@ function detectLineType(line: string):
   if (t.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|20\d\d|19\d\d)\b/) 
       && t.length < 60)
     return 'date'
-
+  
   return 'normal'
 }
 
@@ -62,6 +62,21 @@ export async function generateATSDocx(
 
   const lines = text.split('\n')
   const children: Paragraph[] = []
+
+  // Add ATS header comment
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Optimized for: ${jobTitle}${company ? ` at ${company}` : ''}`,
+          italics: true,
+          color: '666666',
+          size: 18,
+        })
+      ],
+      spacing: { after: 200 },
+    })
+  )
 
   let isFirstLine = true
 
@@ -274,6 +289,22 @@ export async function generateFormattedDocx(
       ],
       alignment: AlignmentType.CENTER,
       spacing: { after: 80 },
+    })
+  )
+
+  // Optimized label
+  children.push(
+    new Paragraph({
+      children: [
+        new TextRun({
+          text: `Optimized for: ${jobTitle}${company ? ` at ${company}` : ''}`,
+          italics: true,
+          size: 18,
+          color: '888888',
+        })
+      ],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 200 },
     })
   )
 

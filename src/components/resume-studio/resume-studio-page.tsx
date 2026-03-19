@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Search, ArrowLeft, User, AlertTriangle, CheckCircle, Sparkles, Zap, ExternalLink, Download, Trash2 } from 'lucide-react'
+import { Search, ArrowLeft, User, AlertTriangle, CheckCircle, Sparkles, Zap, ExternalLink, Download, Trash2, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -54,6 +54,8 @@ interface OptimizedResume {
   status: string
   originalResumeUrl: string
   optimizedResumeUrl: string | null
+  atsResumeUrl: string | null        // ATS-optimized version
+  formattedResumeUrl: string | null  // Formatted version
   createdAt: Date
 }
 
@@ -71,9 +73,13 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
   const [currentRecordId, setCurrentRecordId] = useState<string | null>(null)
   const [scoreResult, setScoreResult] = useState<ScoreResult | null>(null)
   const [optimizedUrl, setOptimizedUrl] = useState<string | null>(null)
+  const [atsUrl, setAtsUrl] = useState<string | null>(null)
+  const [formattedUrl, setFormattedUrl] = useState<string | null>(null)
   const [optimizedFilename, setOptimizedFilename] = useState('')
   const [previousOptimizations, setPreviousOptimizations] = useState<OptimizedResume[]>([])
   const [loadingPrevious, setLoadingPrevious] = useState(true)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
 
   console.log('[ResumeStudioPage] Loaded with candidates:', candidates.length);
   console.log('[ResumeStudioPage] Selected candidate:', selectedCandidate?.fullName);
@@ -112,10 +118,14 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
   }
 
   function openInGoogleDocs(url: string) {
-    window.open(
-      `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`,
-      '_blank'
-    )
+    // Open resume in preview modal
+    if (!url) {
+      toast.error('Resume URL not available')
+      return
+    }
+    
+    setPreviewUrl(url)
+    setShowPreviewModal(true)
   }
 
   function ScoreBar({ score, label }: { score: number; label: string }) {
@@ -161,6 +171,8 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
     setJobDescription('')
     setScoreResult(null)
     setOptimizedUrl(null)
+    setAtsUrl(null)
+    setFormattedUrl(null)
     setCurrentRecordId(null)
   }, [selectedCandidate])
 
@@ -180,6 +192,8 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
     setIsScoring(true)
     setScoreResult(null)
     setOptimizedUrl(null)
+    setAtsUrl(null)
+    setFormattedUrl(null)
     setCurrentRecordId(null)
 
     try {
@@ -221,7 +235,9 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
       if (!response.ok) throw new Error(data.error || 'Optimization failed')
       
       setOptimizedUrl(data.optimizedResumeUrl)
-      setOptimizedFilename(data.filename || 'optimized-resume.docx')
+      setAtsUrl(data.atsResumeUrl || data.optimizedResumeUrl)  // Fallback to main URL
+      setFormattedUrl(data.formattedResumeUrl || data.optimizedResumeUrl)  // Fallback to main URL
+      setOptimizedFilename(data.atsFilename || 'optimized-resume.docx')
       setScoreResult(data.score)
       toast.success('Resume optimized successfully!')
 
@@ -710,78 +726,121 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
                         </div>
                       )
                     ) : (
-                      /* Optimized Result */
-                      <div className="p-5 bg-green-500/5 border-2 border-green-500/30 
-                        rounded-xl space-y-4">
-                        
-                        {/* Success header */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-green-500/20 
-                            flex items-center justify-center">
+                      /* Show optimized results */
+                      (atsUrl || formattedUrl) && (
+                        <div className="p-5 bg-green-500/5 border-2 
+                          border-green-500/30 rounded-xl space-y-4 mt-2">
+                          
+                          {/* Success header */}
+                          <div className="flex items-center gap-2">
                             <CheckCircle className="h-5 w-5 text-green-500" />
-                          </div>
-                          <div>
                             <h4 className="font-bold text-green-500">
                               Resume Optimized Successfully!
                             </h4>
-                            <p className="text-xs text-muted-foreground">
-                              New Score: {scoreResult.overall}/10
-                            </p>
                           </div>
-                        </div>
 
-                        {/* Filename */}
-                        <div className="p-3 bg-muted/30 rounded-lg">
-                          <p className="text-xs text-muted-foreground mb-1">
-                            Saved as:
+                          <p className="text-xs text-muted-foreground">
+                            Two versions generated for different use cases:
                           </p>
-                          <p className="text-sm font-medium truncate flex items-center gap-1">
-                            <span>📄</span>
-                            {optimizedFilename.split('/').pop() || 'optimized-resume.docx'}
-                          </p>
-                        </div>
 
-                        {/* Action buttons */}
-                        <div className="grid grid-cols-2 gap-3">
+                          {/* ATS Version */}
+                          <div className="p-3 border border-border rounded-lg space-y-2">
+                            <div>
+                              <p className="text-sm font-semibold flex items-center gap-1">
+                                🤖 ATS-Friendly Version
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Clean format optimized for Applicant Tracking Systems.
+                                Use this when applying through job portals 
+                                (LinkedIn, Naukri, etc.)
+                              </p>
+                            </div>
+                            {atsUrl && (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => window.open(
+                                    `https://docs.google.com/viewer?url=${encodeURIComponent(atsUrl)}`,
+                                    '_blank'
+                                  )}
+                                  className="flex-1 py-2 text-xs border border-yellow-400 
+                                    text-yellow-400 rounded-md hover:bg-yellow-400/10 
+                                    transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Preview
+                                </button>
+                                
+                                <a
+                                  href={atsUrl}
+                                  download
+                                  className="flex-1 py-2 text-xs bg-yellow-400 text-black 
+                                    rounded-md hover:bg-yellow-500 transition-colors 
+                                    flex items-center justify-center gap-1 font-semibold"
+                                >
+                                  <Download className="h-3 w-3" />
+                                  Download ATS
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Formatted Version */}
+                          <div className="p-3 border border-border rounded-lg space-y-2">
+                            <div>
+                              <p className="text-sm font-semibold flex items-center gap-1">
+                                ✨ Formatted Version
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Professional layout with proper formatting.
+                                Use this for direct email submissions or 
+                                sharing with hiring managers.
+                              </p>
+                            </div>
+                            {formattedUrl && (
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => window.open(
+                                    `https://docs.google.com/viewer?url=${encodeURIComponent(formattedUrl)}`,
+                                    '_blank'
+                                  )}
+                                  className="flex-1 py-2 text-xs border border-yellow-400 
+                                    text-yellow-400 rounded-md hover:bg-yellow-400/10 
+                                    transition-colors flex items-center justify-center gap-1"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Preview
+                                </button>
+                                
+                                <a
+                                  href={formattedUrl}
+                                  download
+                                  className="flex-1 py-2 text-xs bg-yellow-400 text-black 
+                                    rounded-md hover:bg-yellow-500 transition-colors 
+                                    flex items-center justify-center gap-1 font-semibold"
+                                >
+                                  <Download className="h-3 w-3" />
+                                  Download Formatted
+                                </a>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Re-optimize option */}
                           <button
                             type="button"
-                            onClick={() => window.open(
-                              `https://docs.google.com/viewer?url=${encodeURIComponent(optimizedUrl)}`,
-                              '_blank'
-                            )}
-                            className="py-2.5 text-sm border-2 border-yellow-400 
-                              text-yellow-400 rounded-lg hover:bg-yellow-400/10 
-                              transition-colors flex items-center justify-center 
-                              gap-2 font-medium"
+                            onClick={handleOptimize}
+                            disabled={isOptimizing}
+                            className="w-full py-2 text-xs border border-border 
+                              text-muted-foreground rounded-lg hover:border-yellow-400 
+                              hover:text-yellow-400 transition-colors
+                              disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            <ExternalLink className="h-4 w-4" />
-                            View Resume
+                            {isOptimizing ? 'Optimizing...' : '↺ Re-optimize Resume'}
                           </button>
-                          <a
-                            href={optimizedUrl}
-                            download
-                            className="py-2.5 text-sm bg-yellow-400 text-black 
-                              rounded-lg hover:bg-yellow-500 transition-colors 
-                              flex items-center justify-center gap-2 font-bold"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download DOCX
-                          </a>
                         </div>
-
-                        {/* Optimize again option */}
-                        <button
-                          type="button"
-                          onClick={handleOptimize}
-                          disabled={isOptimizing}
-                          className="w-full py-2 text-xs border border-border 
-                            text-muted-foreground rounded-lg hover:border-yellow-400 
-                            hover:text-yellow-400 transition-colors
-                            disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isOptimizing ? 'Optimizing...' : '↺ Re-optimize Resume'}
-                        </button>
-                      </div>
+                      )
                     )}
                   </div>
                 )}
@@ -837,6 +896,28 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
                                   minute: '2-digit',
                                 })}
                               </p>
+
+                              {/* Version availability indicators */}
+                              <div className="flex items-center gap-1 mt-1">
+                                {record.atsResumeUrl && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-yellow-400/10
+                                    text-yellow-400 rounded border border-yellow-400/20">
+                                    ATS
+                                  </span>
+                                )}
+                                {record.formattedResumeUrl && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-green-500/10
+                                    text-green-500 rounded border border-green-500/20">
+                                    Formatted
+                                  </span>
+                                )}
+                                {!record.atsResumeUrl && record.optimizedResumeUrl && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-muted
+                                    text-muted-foreground rounded border border-border">
+                                    Legacy
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               <span className="text-sm font-black text-yellow-400">
@@ -852,44 +933,100 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
                             </div>
                           </div>
                           <div className="flex gap-2 flex-wrap items-center">
+                            {/* View Original */}
                             <button
                               type="button"
                               onClick={() => openInGoogleDocs(record.originalResumeUrl)}
-                              className="text-xs px-3 py-1.5 border border-border 
-                                text-muted-foreground rounded-lg hover:border-yellow-400 
+                              className="text-xs px-3 py-1.5 border border-border
+                                text-muted-foreground rounded-lg hover:border-yellow-400
                                 hover:text-yellow-400 transition-colors"
                             >
-                              View Original
+                              📄 Original
                             </button>
-                            {record.optimizedResumeUrl && (
+
+                            {/* Smart button rendering based on available URLs */}
+                            {record.atsResumeUrl ? (
+                              // New format — show both versions separately
                               <>
                                 <button
                                   type="button"
-                                  onClick={() => 
-                                    openInGoogleDocs(record.optimizedResumeUrl!)
-                                  }
-                                  className="text-xs px-3 py-1.5 border 
-                                    border-yellow-400 text-yellow-400 rounded-lg 
-                                    hover:bg-yellow-400/10 transition-colors"
+                                  onClick={() => openInGoogleDocs(record.atsResumeUrl!)}
+                                  className="text-xs px-3 py-1.5 border border-yellow-400
+                                    text-yellow-400 rounded-lg hover:bg-yellow-400/10
+                                    transition-colors flex items-center gap-1"
                                 >
-                                  View Optimized
+                                  🤖 ATS Version
                                 </button>
-                                <a
-                                  href={record.optimizedResumeUrl}
-                                  download
-                                  className="text-xs px-3 py-1.5 border 
-                                    border-green-500/50 text-green-500 rounded-lg 
-                                    hover:bg-green-500/10 transition-colors"
-                                >
-                                  Download
-                                </a>
+
+                                {record.formattedResumeUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openInGoogleDocs(record.formattedResumeUrl!)}
+                                    className="text-xs px-3 py-1.5 border border-green-500/50
+                                      text-green-500 rounded-lg hover:bg-green-500/10
+                                      transition-colors flex items-center gap-1"
+                                  >
+                                    ✨ Formatted
+                                  </button>
+                                )}
                               </>
+                            ) : record.optimizedResumeUrl ? (
+                              // Old format — show single view button
+                              <button
+                                type="button"
+                                onClick={() => openInGoogleDocs(record.optimizedResumeUrl!)}
+                                className="text-xs px-3 py-1.5 border border-yellow-400
+                                  text-yellow-400 rounded-lg hover:bg-yellow-400/10
+                                  transition-colors"
+                              >
+                                View Optimized
+                              </button>
+                            ) : null}
+
+                            {/* Download buttons */}
+                            {record.atsResumeUrl && (
+                              <a
+                                href={record.atsResumeUrl}
+                                download
+                                className="text-xs px-3 py-1.5 border border-border
+                                  text-muted-foreground rounded-lg hover:border-yellow-400
+                                  hover:text-yellow-400 transition-colors flex items-center gap-1"
+                              >
+                                ⬇ ATS
+                              </a>
                             )}
+
+                            {record.formattedResumeUrl && (
+                              <a
+                                href={record.formattedResumeUrl}
+                                download
+                                className="text-xs px-3 py-1.5 border border-border
+                                  text-muted-foreground rounded-lg hover:border-green-500
+                                  hover:text-green-500 transition-colors flex items-center gap-1"
+                              >
+                                ⬇ Formatted
+                              </a>
+                            )}
+
+                            {/* Legacy single download */}
+                            {!record.atsResumeUrl && record.optimizedResumeUrl && (
+                              <a
+                                href={record.optimizedResumeUrl}
+                                download
+                                className="text-xs px-3 py-1.5 border border-border
+                                  text-muted-foreground rounded-lg hover:border-yellow-400
+                                  hover:text-yellow-400 transition-colors"
+                              >
+                                Download
+                              </a>
+                            )}
+
+                            {/* Delete button — always last */}
                             <button
                               type="button"
                               onClick={() => handleDelete(record.id)}
-                              className="text-xs px-2 py-1.5 border 
-                                border-red-500/30 text-red-400 rounded-lg 
+                              className="text-xs px-2 py-1.5 border
+                                border-red-500/30 text-red-400 rounded-lg
                                 hover:bg-red-500/10 transition-colors ml-auto"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -905,6 +1042,85 @@ export function ResumeStudioPage({ candidates, isAdmin }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Resume Preview Modal */}
+      {showPreviewModal && previewUrl && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] 
+            flex flex-col border border-border">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-4 border-b border-border">
+              <h2 className="font-semibold flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Resume Preview
+              </h2>
+              <button
+                onClick={() => setShowPreviewModal(false)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body - Embed the file */}
+            <div className="flex-1 overflow-auto bg-muted/20">
+              {previewUrl.endsWith('.pdf') ? (
+                <iframe
+                  src={previewUrl}
+                  className="w-full h-full border-0"
+                  title="Resume Preview"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-4 p-8">
+                  <p className="text-muted-foreground text-center">
+                    DOCX files cannot be previewed in browser. Please download to view.
+                  </p>
+                  <a
+                    href={previewUrl}
+                    download
+                    className="px-4 py-2 bg-yellow-400 text-black rounded-lg 
+                      hover:bg-yellow-500 transition-colors font-semibold 
+                      flex items-center gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Resume
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-between items-center p-4 border-t border-border">
+              <p className="text-xs text-muted-foreground">
+                {previewUrl.split('/').pop() || 'Resume'}
+              </p>
+              <div className="flex gap-2">
+                <a
+                  href={previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                  className="px-4 py-2 text-xs bg-yellow-400 text-black rounded-lg 
+                    hover:bg-yellow-500 transition-colors font-semibold 
+                    flex items-center gap-1"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </a>
+                <button
+                  onClick={() => setShowPreviewModal(false)}
+                  className="px-4 py-2 text-xs border border-border text-muted-foreground 
+                    rounded-lg hover:border-foreground hover:text-foreground 
+                    transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

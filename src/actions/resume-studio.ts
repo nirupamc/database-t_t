@@ -31,6 +31,8 @@ export async function getOptimizedResumesAction(candidateId: string) {
         status: true,
         originalResumeUrl: true,
         optimizedResumeUrl: true,
+        atsResumeUrl: true,
+        formattedResumeUrl: true,
         createdAt: true,
       },
     })
@@ -124,22 +126,26 @@ export async function createOptimizedResumeAction(data: {
  * Update optimized resume with optimization results
  */
 export async function updateOptimizedResumeAction(
-  id: string, 
+  id: string,
   data: {
-    optimizedResumeUrl: string
+    optimizedResumeUrl?: string
+    atsResumeUrl?: string
+    formattedResumeUrl?: string
     compatibilityScore: number
     scoreBreakdown: any
   }
 ) {
   console.log('[updateOptimizedResumeAction] id:', id)
-  
+
   try {
     await requireAuth()
-    
+
     const optimizedResume = await prisma.optimizedResume.update({
       where: { id },
       data: {
-        optimizedResumeUrl: data.optimizedResumeUrl,
+        ...(data.optimizedResumeUrl && { optimizedResumeUrl: data.optimizedResumeUrl }),
+        ...(data.atsResumeUrl && { atsResumeUrl: data.atsResumeUrl }),
+        ...(data.formattedResumeUrl && { formattedResumeUrl: data.formattedResumeUrl }),
         compatibilityScore: data.compatibilityScore,
         scoreBreakdown: data.scoreBreakdown,
         status: 'OPTIMIZED',
@@ -148,7 +154,7 @@ export async function updateOptimizedResumeAction(
 
     console.log('[updateOptimizedResumeAction] Record updated:', optimizedResume.id)
     return optimizedResume
-    
+
   } catch (error) {
     console.error('[updateOptimizedResumeAction] Error:', error)
     throw new Error('Failed to update optimized resume record')

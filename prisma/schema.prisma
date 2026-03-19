@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -149,6 +150,8 @@ model OptimizedResume {
   jobDescription      String                 @db.Text
   originalResumeUrl   String
   optimizedResumeUrl  String?
+  atsResumeUrl        String?
+  formattedResumeUrl  String?
   compatibilityScore  Int
   scoreBreakdown      Json
   fitIndicator        String
