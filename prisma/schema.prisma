@@ -125,6 +125,8 @@ model Round {
   lipsync       Boolean     @default(false)
   feedback      String?
   roundStatus   RoundStatus @default(PENDING)
+  reminderSent  Boolean     @default(false)
+  reminderJobId String?
   applicationId String
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt

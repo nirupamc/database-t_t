@@ -46,7 +46,7 @@ export async function createRoundAction(payload: unknown) {
   const data = parseOrThrow(roundSchema, payload);
   const application = await ensureApplicationAccess(data.applicationId, user);
 
-  const created = await prisma.round.create({
+  const round = await prisma.round.create({
     data: {
       applicationId: data.applicationId,
       roundType: data.roundType,
@@ -63,8 +63,56 @@ export async function createRoundAction(payload: unknown) {
     },
   });
 
+  // Schedule Inngest reminder (non-blocking)
+  try {
+    console.log("[createRoundAction] Fetching recruiter reminder settings");
+    const recruiter = await prisma.recruiter.findUnique({
+      where: { id: user.id },
+      select: {
+        id: true,
+        phone: true,
+        reminderTiming: true,
+      },
+    });
+
+    if (!recruiter) {
+      console.log("[createRoundAction] Recruiter not found, skipping reminder scheduling");
+    } else {
+      const roundDate = new Date(data.date);
+      const [hours, minutes] = (data.time || "09:00").split(":");
+      roundDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+
+      const reminderMinutes = recruiter.reminderTiming ?? 60;
+      const reminderTime = new Date(roundDate.getTime() - reminderMinutes * 60 * 1000);
+
+      console.log("[createRoundAction] Round datetime:", roundDate);
+      console.log("[createRoundAction] Reminder time:", reminderTime);
+      console.log("[createRoundAction] Minutes before:", reminderMinutes);
+
+      if (reminderTime > new Date()) {
+        const { inngest } = await import("@/inngest/client");
+
+        await inngest.send({
+          name: "round/reminder.schedule",
+          data: {
+            roundId: round.id,
+            recruiterId: recruiter.id,
+          },
+          ts: reminderTime.getTime(),
+        });
+
+        console.log("[createRoundAction] ✅ Reminder scheduled for:", reminderTime.toISOString());
+      } else {
+        console.log("[createRoundAction] Reminder time is in the past, skipping");
+      }
+    }
+  } catch (inngestError) {
+    // Never block round creation for reminder failure
+    console.error("[createRoundAction] Inngest scheduling error:", inngestError);
+  }
+
   revalidatePath(`/dashboard/candidates/${application.candidateId}`);
-  return { success: true, data: created };
+  return { success: true, data: round };
 }
 
 export async function updateRoundAction(payload: unknown) {
