@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
 import { verifyPassword } from "@/lib/password";
 
 export const authConfig = {
@@ -20,22 +21,44 @@ export const authConfig = {
       },
       async authorize(credentials) {
         try {
-          const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
+          const identifier = typeof credentials?.email === "string" ? credentials.email.trim() : "";
           const password = typeof credentials?.password === "string" ? credentials.password : "";
 
-          if (!email || !password) {
+          if (!identifier || !password) {
             return null;
           }
 
-          const recruiter = await prisma.recruiter.findUnique({
-            where: { email },
+          const normalizedEmail = identifier.toLowerCase();
+          const recruiter = await prisma.recruiter.findFirst({
+            where: {
+              OR: [
+                { email: normalizedEmail },
+                { id: identifier },
+                { phone: identifier },
+              ],
+            },
           });
 
           if (!recruiter) {
             return null;
           }
 
-          const isPasswordValid = await verifyPassword(password, recruiter.password);
+          let isPasswordValid = false;
+
+          if (recruiter.password.startsWith("$2")) {
+            isPasswordValid = await verifyPassword(password, recruiter.password);
+          } else {
+            // Backward compatibility for legacy plain-text passwords in old records.
+            isPasswordValid = recruiter.password === password;
+            if (isPasswordValid) {
+              const hashedPassword = await hashPassword(password);
+              await prisma.recruiter.update({
+                where: { id: recruiter.id },
+                data: { password: hashedPassword },
+              });
+            }
+          }
+
           if (!isPasswordValid) {
             return null;
           }
