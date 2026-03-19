@@ -137,10 +137,12 @@ export default function ResumeStudioTab({ candidateId, candidateName, resumeUrl 
   }
 
   const viewResumeInGoogleViewer = (url: string) => {
-    window.open(
-      `https://docs.google.com/viewer?url=${encodeURIComponent(url)}`,
-      '_blank'
-    )
+    const isDocx = /\.docx(\?|$)/i.test(url)
+    if (isDocx) {
+      window.open(url, '_blank')
+      return
+    }
+    window.open(`https://docs.google.com/viewer?url=${encodeURIComponent(url)}`, '_blank')
   }
 
   const downloadResume = (url: string) => {

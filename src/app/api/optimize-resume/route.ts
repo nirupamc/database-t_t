@@ -65,14 +65,22 @@ export async function POST(request: NextRequest) {
       year: 'numeric'
     }).replace(/ /g, '')
 
-    const filename = `optimized-resumes/${cleanName}_${cleanTitle}_${cleanCompany}_${date}.docx`
+    const atsFilename = `optimized-resumes/ATS_${cleanName}_${cleanTitle}_${cleanCompany}_${date}.docx`
+    const formattedFilename = `optimized-resumes/Formatted_${cleanName}_${cleanTitle}_${cleanCompany}_${date}.docx`
 
-    // Upload to Vercel Blob
-    const blob = await put(filename, docxBuffer, {
-      access: 'public',
-      addRandomSuffix: false,
-      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    })
+    // Upload ATS + Formatted links (same DOCX content for now)
+    const [atsBlob, formattedBlob] = await Promise.all([
+      put(atsFilename, docxBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+      put(formattedFilename, docxBuffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }),
+    ])
 
     // Score the optimized resume
     const newScore = await scoreResume(optimizedText, record.jobDescription)
@@ -81,20 +89,26 @@ export async function POST(request: NextRequest) {
     const updated = await prisma.optimizedResume.update({
       where: { id: optimizedResumeId },
       data: {
-        optimizedResumeUrl: blob.url,
+        optimizedResumeUrl: atsBlob.url,
+        atsResumeUrl: atsBlob.url,
+        formattedResumeUrl: formattedBlob.url,
         compatibilityScore: newScore.overall,
         scoreBreakdown: newScore as object,
         status: 'OPTIMIZED',
       }
     })
 
-    console.log('[ResumeStudio/Optimize] Done:', blob.url)
+    console.log('[ResumeStudio/Optimize] Done ATS:', atsBlob.url)
+    console.log('[ResumeStudio/Optimize] Done Formatted:', formattedBlob.url)
 
     return NextResponse.json({
       id: updated.id,
-      optimizedResumeUrl: blob.url,
+      optimizedResumeUrl: atsBlob.url,
+      atsResumeUrl: atsBlob.url,
+      formattedResumeUrl: formattedBlob.url,
       score: newScore,
-      filename,
+      atsFilename,
+      formattedFilename,
     })
 
   } catch (error) {
