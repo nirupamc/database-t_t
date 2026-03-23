@@ -32,5 +32,7 @@ export default async function ResumeStudioPageServer() {
 
   console.log('[ResumeStudio] Found candidates:', candidates.length);
 
-  return <ResumeStudioPage candidates={candidates} />;
+  const isAdmin = session.user.role === 'admin';
+
+  return <ResumeStudioPage candidates={candidates} isAdmin={isAdmin} />;
 }
