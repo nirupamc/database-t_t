@@ -8,9 +8,22 @@ export const authConfig = {
   pages: {
     signIn: "/login",
     signOut: "/login",
+    error: "/login",
   },
   session: {
     strategy: "jwt",
+  },
+  trustHost: true, // Required for Vercel deployment
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+      },
+    },
   },
   providers: [
     Credentials({
@@ -66,8 +79,16 @@ export const authConfig = {
     }),
   ],
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    },
     async jwt({ token, user }) {
       if (user) {
+        token.id = user.id;
         token.role = (user as { role: "admin" | "recruiter" }).role;
       }
       if (!token.role) {
@@ -76,8 +97,8 @@ export const authConfig = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.sub ?? "";
+      if (session.user && token) {
+        session.user.id = token.id as string ?? token.sub ?? "";
         session.user.role = (token.role as "admin" | "recruiter" | undefined) ?? "recruiter";
       }
       return session;
