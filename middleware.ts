@@ -24,6 +24,8 @@ export async function middleware(req: NextRequest) {
 
   console.log('[Middleware] Path:', nextUrl.pathname)
   console.log('[Middleware] Has session cookie:', !!sessionToken)
+  console.log('[Middleware] Cookie value (first 50 chars):',
+    sessionToken?.substring(0, 50))
   console.log('[Middleware] All cookies:',
     req.cookies.getAll().map(c => c.name).join(', '))
 
@@ -37,65 +39,69 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Helper function to decode JWT payload
+  // Helper function to decode JWT payload with proper base64url handling
   function decodeJWT(token: string) {
+    let role = ''
     try {
-      const payload = JSON.parse(
-        Buffer.from(
-          token.split('.')[1],
-          'base64'
-        ).toString()
-      )
-      return payload
-    } catch {
-      return null
+      // JWT has 3 parts separated by dots
+      const parts = token.split('.')
+      if (parts.length === 3) {
+        // Add padding if needed for base64 decode
+        // Also handle base64url encoding (- instead of +, _ instead of /)
+        const base64 = parts[1]
+          .replace(/-/g, '+')
+          .replace(/_/g, '/')
+        const padded = base64 + '='.repeat(
+          (4 - base64.length % 4) % 4
+        )
+        const payload = JSON.parse(
+          Buffer.from(padded, 'base64').toString('utf-8')
+        )
+        role = (payload.role || '').toUpperCase()
+        console.log('[Middleware] Decoded role:', role)
+        console.log('[Middleware] Full payload:',
+          JSON.stringify(payload))
+        return { payload, role }
+      }
+    } catch (e) {
+      console.error('[Middleware] JWT decode error:', e)
     }
+    return { payload: null, role: '' }
   }
 
   // Logged in on login page
   if (isLoginPage) {
-    try {
-      const payload = decodeJWT(sessionToken)
-      console.log('[Middleware] JWT payload role:', payload?.role)
+    const { role } = decodeJWT(sessionToken)
 
-      const role = (payload?.role || '').toUpperCase()
-
-      if (role === 'ADMIN') {
-        return NextResponse.redirect(new URL('/admin', req.url))
-      }
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    } catch {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+    if (role === 'ADMIN') {
+      console.log('[Middleware] Admin on login page, redirecting to /admin')
+      return NextResponse.redirect(new URL('/admin', req.url))
     }
+    console.log('[Middleware] Non-admin on login page, redirecting to /dashboard')
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   // Root path
   if (nextUrl.pathname === '/') {
-    try {
-      const payload = decodeJWT(sessionToken)
-      const role = (payload?.role || '').toUpperCase()
+    const { role } = decodeJWT(sessionToken)
 
-      if (role === 'ADMIN') {
-        return NextResponse.redirect(new URL('/admin', req.url))
-      }
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    } catch {
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+    if (role === 'ADMIN') {
+      console.log('[Middleware] Admin at root, redirecting to /admin')
+      return NextResponse.redirect(new URL('/admin', req.url))
     }
+    console.log('[Middleware] Non-admin at root, redirecting to /dashboard')
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
   // Admin route protection
   if (nextUrl.pathname.startsWith('/admin')) {
-    try {
-      const payload = decodeJWT(sessionToken)
-      const role = (payload?.role || '').toUpperCase()
+    const { role } = decodeJWT(sessionToken)
 
-      if (role !== 'ADMIN') {
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-    } catch {
-      return NextResponse.redirect(new URL('/login', req.url))
+    if (role !== 'ADMIN') {
+      console.log('[Middleware] Non-admin accessing /admin (role:', role, '), redirecting to /dashboard')
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
+    console.log('[Middleware] Admin accessing /admin, allowing')
   }
 
   return NextResponse.next()
