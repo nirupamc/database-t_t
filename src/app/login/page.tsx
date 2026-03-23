@@ -44,18 +44,27 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    console.log("[Login] Attempting sign in with NEXTAUTH_URL fix...");
+    console.log("[Login] Attempting sign in with credentials:", { email: values.email, password: "***" });
+    console.log("[Login] Using NEXTAUTH_URL:", process.env.NEXTAUTH_URL || "undefined");
 
     try {
+      console.log("[Login] Calling signIn...");
       const result = await signIn("credentials", {
         email: values.email,
         password: values.password,
         redirect: false,
       });
 
-      console.log("[Login] SignIn result:", result);
+      console.log("[Login] SignIn result:", {
+        ok: result?.ok,
+        error: result?.error,
+        status: result?.status,
+        url: result?.url,
+        fullResult: result,
+      });
 
       if (!result) {
+        console.error("[Login] No result from signIn");
         toast.error("Login failed", {
           description: "No response from server. Please check your internet connection.",
         });
@@ -63,7 +72,7 @@ export default function LoginPage() {
       }
 
       if (result.error) {
-        console.error("[Login] signIn error:", result.error);
+        console.error("[Login] SignIn error:", result.error);
         toast.error("Login failed", {
           description: `Error: ${result.error}. Please check your credentials and try again.`,
         });
@@ -71,7 +80,7 @@ export default function LoginPage() {
       }
 
       if (!result.ok) {
-        console.error("[Login] signIn not ok:", result);
+        console.error("[Login] SignIn not ok:", result);
         toast.error("Login failed", {
           description: "Authentication failed. Please verify your email and password.",
         });
@@ -81,10 +90,21 @@ export default function LoginPage() {
       console.log("[Login] Sign in successful, redirecting...");
       toast.success("Login successful! Redirecting...");
 
+      // Try to get session immediately to debug
+      try {
+        console.log("[Login] Checking session after successful signin...");
+        const response = await fetch('/api/auth/session');
+        const session = await response.json();
+        console.log("[Login] Session after signin:", session);
+      } catch (sessionError) {
+        console.error("[Login] Error checking session:", sessionError);
+      }
+
       // Small delay to show the success message
       setTimeout(() => {
+        console.log("[Login] Redirecting to /dashboard");
         window.location.href = "/dashboard";
-      }, 500);
+      }, 1000);
 
     } catch (error) {
       console.error("[Login] Unexpected error:", error);
