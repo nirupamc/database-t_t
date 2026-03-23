@@ -1,64 +1,61 @@
-import NextAuth from 'next-auth'
-import Credentials from 'next-auth/providers/credentials'
+import NextAuth from "next-auth"
+import type { NextAuthConfig } from "next-auth"
+import Credentials from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
+import { prisma } from "@/lib/prisma"
 
-import { prisma } from "@/lib/prisma";
-import { verifyPassword } from "@/lib/password";
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const config: NextAuthConfig = {
   trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 
   providers: [
     Credentials({
-      name: 'credentials',
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        console.log('[Auth] Login attempt for:', credentials?.email)
+        console.log("[Auth] Authorize called:", credentials?.email)
 
         if (!credentials?.email || !credentials?.password) {
+          console.log("[Auth] Missing credentials")
           return null
         }
 
         try {
           const user = await prisma.recruiter.findUnique({
-            where: {
-              email: credentials.email as string
-            },
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              password: true,
-              role: true,
-            }
+            where: { email: credentials.email as string },
           })
 
           if (!user) {
-            console.log('[Auth] User not found')
+            console.log("[Auth] User not found:", credentials.email)
             return null
           }
 
-          const isValid = await verifyPassword(
+          const isValid = await bcrypt.compare(
             credentials.password as string,
             user.password
           )
 
-          console.log('[Auth] DB lookup result: found (role:', user.role + ')')
-          console.log('[Auth] Password valid:', isValid)
+          console.log("[Auth] Password valid:", isValid)
+          console.log("[Auth] User role from DB:", user.role)
 
           if (!isValid) return null
 
-          return {
+          // Return ALL fields explicitly
+          const returnUser = {
             id: user.id,
-            name: user.name,
             email: user.email,
-            role: user.role,
+            name: user.name,
+            role: user.role,  // this is critical
           }
+
+          console.log("[Auth] Returning user:", returnUser)
+          return returnUser
+
         } catch (error) {
-          console.error('[Auth] Error:', error)
+          console.error("[Auth] Database error:", error)
           return null
         }
       },
@@ -66,43 +63,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
 
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
 
   pages: {
-    signIn: '/login',
-    error: '/login',
+    signIn: "/login",
+    error: "/login",
   },
 
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      console.log("[JWT Callback] trigger:", trigger)
+      console.log("[JWT Callback] user:", user)
+      console.log("[JWT Callback] token before:", token)
+
+      // When user signs in, user object is available
       if (user) {
-        token.id = user.id
-        token.role = user.role as string
-        token.name = user.name
-        token.email = user.email
+        token.id = user.id as string
+        token.email = user.email as string
+        token.name = user.name as string
+        // Cast to any to access custom role field
+        token.role = (user as { role: string }).role
+
+        console.log("[JWT Callback] Set role to:", token.role)
       }
+
+      console.log("[JWT Callback] token after:", token)
       return token
     },
 
     async session({ session, token }) {
-      if (token && session.user) {
+      console.log("[Session Callback] token:", token)
+
+      if (token) {
         session.user.id = token.id as string
-        session.user.role = token.role as string
-        session.user.name = token.name as string
         session.user.email = token.email as string
+        session.user.name = token.name as string
+        session.user.role = token.role as string
+
+        console.log("[Session Callback] Set session role:",
+          session.user.role)
       }
+
+      console.log("[Session Callback] final session:", session)
       return session
     },
-
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith('/')) return `${baseUrl}${url}`
-      if (new URL(url).origin === baseUrl) return url
-      return baseUrl
-    },
   },
-})
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(config)
 
 export async function getCurrentSession() {
   return auth();
@@ -112,4 +122,3 @@ export async function getCurrentUser() {
   const session = await auth();
   return session?.user ?? null;
 }
-
