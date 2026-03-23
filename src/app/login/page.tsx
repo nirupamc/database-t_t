@@ -62,11 +62,17 @@ export default function LoginPage() {
       return;
     }
 
+    toast.success("Login successful");
+
+    // Refresh router to sync session with server
+    router.refresh();
+
+    // Get updated session after refresh
     const session = await getSession();
     const role = session?.user?.role;
 
-    toast.success("Login successful");
-    router.push(role === "admin" ? "/admin" : "/dashboard");
+    // Use window.location for full page navigation to ensure session is loaded
+    window.location.href = role === "admin" ? "/admin" : "/dashboard";
   };
 
   return (
