@@ -257,7 +257,7 @@ export function ApplicationsList({
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="space-y-1">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Round Type</Label>
-                      <Select value={roundForm.roundType} onValueChange={(v) => updateField("roundType", v)}>
+                      <Select value={roundForm.roundType} onValueChange={(v) => updateField("roundType", v as RoundType)}>
                         <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                         <SelectContent>
                           {roundTypes.map((rt) => (
@@ -313,7 +313,7 @@ export function ApplicationsList({
 
                     <div className="space-y-1">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Mode</Label>
-                      <Select value={roundForm.mode} onValueChange={(v) => updateField("mode", v)}>
+                      <Select value={roundForm.mode} onValueChange={(v) => updateField("mode", v as InterviewMode)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {interviewModes.map((m) => (
@@ -343,7 +343,7 @@ export function ApplicationsList({
 
                     <div className="space-y-1">
                       <Label className="text-xs uppercase tracking-wider text-muted-foreground">Lipsync</Label>
-                      <Select value={roundForm.lipsync} onValueChange={(v) => updateField("lipsync", v)}>
+                      <Select value={roundForm.lipsync} onValueChange={(v) => updateField("lipsync", v as LipsyncQuality)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {lipsyncOptions.map((l) => (
