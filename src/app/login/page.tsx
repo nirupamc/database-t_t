@@ -46,30 +46,52 @@ export default function LoginPage() {
   const onSubmit = async (values: FormValues) => {
     console.log("[Login] Attempting sign in...");
 
-    const result = await signIn("credentials", {
-      email: values.email,
-      password: values.password,
-      redirect: false,
-    });
-
-    console.log("[Login] SignIn result:", result);
-
-    if (!result || result.error) {
-      console.error("[Login] signIn error:", result?.error);
-      toast.error("Invalid credentials", {
-        description: result?.error === "Configuration"
-          ? "Database may be offline. Ensure 'npx prisma dev' is running."
-          : "Please check your email and password.",
+    try {
+      const result = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
       });
-      return;
+
+      console.log("[Login] SignIn result:", result);
+
+      if (!result) {
+        toast.error("Login failed", {
+          description: "No response from server. Please check your internet connection.",
+        });
+        return;
+      }
+
+      if (result.error) {
+        console.error("[Login] signIn error:", result.error);
+        toast.error("Login failed", {
+          description: `Error: ${result.error}. Please check your credentials and try again.`,
+        });
+        return;
+      }
+
+      if (!result.ok) {
+        console.error("[Login] signIn not ok:", result);
+        toast.error("Login failed", {
+          description: "Authentication failed. Please verify your email and password.",
+        });
+        return;
+      }
+
+      console.log("[Login] Sign in successful, redirecting...");
+      toast.success("Login successful! Redirecting...");
+
+      // Small delay to show the success message
+      setTimeout(() => {
+        window.location.href = "/dashboard";
+      }, 500);
+
+    } catch (error) {
+      console.error("[Login] Unexpected error:", error);
+      toast.error("Unexpected error", {
+        description: error instanceof Error ? error.message : "Please try again later.",
+      });
     }
-
-    console.log("[Login] Sign in successful, redirecting...");
-    toast.success("Login successful");
-
-    // Use window.location for full page navigation
-    // Middleware will redirect admins from /dashboard to /admin
-    window.location.href = "/dashboard";
   };
 
   return (
