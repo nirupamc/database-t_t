@@ -1,27 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req
 
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-    secureCookie: process.env.NODE_ENV === 'production',
-    cookieName: process.env.NODE_ENV === 'production'
-      ? '__Secure-next-auth.session-token'
-      : 'next-auth.session-token',
-  })
-
-  const isLoggedIn = !!token
-  const userRole = (token?.role as string || '').toUpperCase()
-
-  console.log('[Middleware] Path:', nextUrl.pathname)
-  console.log('[Middleware] Token exists:', isLoggedIn)
-  console.log('[Middleware] Role:', userRole)
-
-  // Always allow these paths
+  // Always allow these paths without any auth check
   if (
     nextUrl.pathname.startsWith('/api/auth') ||
     nextUrl.pathname.startsWith('/_next') ||
@@ -31,35 +14,88 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
+  // Read the session token cookie directly
+  // NextAuth v5 uses different cookie names depending on environment
+  const sessionToken =
+    req.cookies.get('__Secure-next-auth.session-token')?.value ||
+    req.cookies.get('next-auth.session-token')?.value ||
+    req.cookies.get('authjs.session-token')?.value ||
+    req.cookies.get('__Secure-authjs.session-token')?.value
+
+  console.log('[Middleware] Path:', nextUrl.pathname)
+  console.log('[Middleware] Has session cookie:', !!sessionToken)
+  console.log('[Middleware] All cookies:',
+    req.cookies.getAll().map(c => c.name).join(', '))
+
+  const isLoggedIn = !!sessionToken
   const isLoginPage = nextUrl.pathname === '/login'
 
   // Not logged in
   if (!isLoggedIn) {
     if (isLoginPage) return NextResponse.next()
-    console.log('[Middleware] No token, redirecting to login')
+    console.log('[Middleware] No cookie, redirecting to login')
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Logged in on login page → redirect to dashboard
+  // Helper function to decode JWT payload
+  function decodeJWT(token: string) {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(
+          token.split('.')[1],
+          'base64'
+        ).toString()
+      )
+      return payload
+    } catch {
+      return null
+    }
+  }
+
+  // Logged in on login page
   if (isLoginPage) {
-    if (userRole === 'ADMIN') {
-      return NextResponse.redirect(new URL('/admin', req.url))
+    try {
+      const payload = decodeJWT(sessionToken)
+      console.log('[Middleware] JWT payload role:', payload?.role)
+
+      const role = (payload?.role || '').toUpperCase()
+
+      if (role === 'ADMIN') {
+        return NextResponse.redirect(new URL('/admin', req.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    } catch {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
-    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // Root redirect
+  // Root path
   if (nextUrl.pathname === '/') {
-    if (userRole === 'ADMIN') {
-      return NextResponse.redirect(new URL('/admin', req.url))
+    try {
+      const payload = decodeJWT(sessionToken)
+      const role = (payload?.role || '').toUpperCase()
+
+      if (role === 'ADMIN') {
+        return NextResponse.redirect(new URL('/admin', req.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    } catch {
+      return NextResponse.redirect(new URL('/dashboard', req.url))
     }
-    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // Non-admin trying to access /admin
-  if (nextUrl.pathname.startsWith('/admin') &&
-      userRole !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+  // Admin route protection
+  if (nextUrl.pathname.startsWith('/admin')) {
+    try {
+      const payload = decodeJWT(sessionToken)
+      const role = (payload?.role || '').toUpperCase()
+
+      if (role !== 'ADMIN') {
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
   }
 
   return NextResponse.next()
