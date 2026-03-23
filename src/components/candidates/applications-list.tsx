@@ -74,7 +74,7 @@ export function ApplicationsList({
   applications: Application[];
 }) {
   const router = useRouter();
-  const [applications, setApplications] = useState(initialApps);
+  const [applications] = useState(initialApps);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -159,7 +159,7 @@ export function ApplicationsList({
       } else {
         toast.error("Failed to save round. Please try again.");
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to save round. Please try again.");
     } finally {
       setIsSaving(false);

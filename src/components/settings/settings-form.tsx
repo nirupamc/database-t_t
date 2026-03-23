@@ -241,7 +241,7 @@ export function SettingsForm({
       } else {
         toast.error(result.error || "Failed to disconnect");
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to disconnect Google Calendar");
     } finally {
       setIsDisconnecting(false);
@@ -263,7 +263,7 @@ export function SettingsForm({
         toast.error(result.error || "Failed to update");
         setReminderTiming(previousValue); // Revert on failure
       }
-    } catch (_error) {
+    } catch {
       toast.error("Failed to update reminder timing");
       setReminderTiming(previousValue); // Revert on failure
     } finally {
