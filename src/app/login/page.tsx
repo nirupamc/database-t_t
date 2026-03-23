@@ -44,7 +44,7 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
-    console.log("[Login] Attempting sign in...");
+    console.log("[Login] Attempting sign in with NEXTAUTH_URL fix...");
 
     try {
       const result = await signIn("credentials", {
