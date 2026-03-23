@@ -20,7 +20,7 @@ interface OptimizedResumeWithRelations {
   atsResumeUrl: string | null
   formattedResumeUrl: string | null
   jobDescription: string
-  scoreBreakdown: unknown
+  scoreBreakdown: Record<string, any> | null
   createdAt: Date
   candidate: {
     id: string
@@ -543,7 +543,7 @@ export function AdminResumeStudioPage({
                   </div>
 
                   {/* Score Breakdown */}
-                  {record.scoreBreakdown && (
+                  {record.scoreBreakdown && Object.keys(record.scoreBreakdown).length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold
                         text-muted-foreground uppercase tracking-wide">
@@ -553,11 +553,7 @@ export function AdminResumeStudioPage({
                         md:grid-cols-4 gap-2">
                         {['keywords', 'skills',
                           'experience', 'education'].map(key => {
-                          const breakdown =
-                            (record.scoreBreakdown as Record<
-                              string,
-                              Record<string, unknown>
-                            >)?.breakdown
+                          const breakdown = record.scoreBreakdown?.breakdown as Record<string, any> | undefined
                           const score = breakdown?.[key] as
                             { score?: number } | undefined
                           const scoreVal = score?.score ?? 0
