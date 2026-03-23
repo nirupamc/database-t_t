@@ -8,6 +8,9 @@ import { UserPlus } from "lucide-react";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// Force dynamic rendering since this page uses authentication
+export const dynamic = 'force-dynamic'
+
 /** My Candidates list page – /dashboard/candidates */
 export default async function CandidatesPage() {
   const session = await getCurrentSession();

@@ -5,6 +5,9 @@ import { mapCandidateToView } from "@/lib/mappers";
 import { prisma } from "@/lib/prisma";
 
 /** Candidate detail page – /dashboard/candidates/[id] */
+// Force dynamic rendering since this page uses authentication
+export const dynamic = 'force-dynamic'
+
 export default async function CandidatePage({
   params,
 }: {

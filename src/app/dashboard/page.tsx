@@ -9,6 +9,9 @@ import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { ApplicationStatus } from "@/types";
 
+// Force dynamic rendering since this page uses authentication
+export const dynamic = 'force-dynamic'
+
 function mapApplicationStatus(status: string): ApplicationStatus {
   switch (status) {
     case "APPLIED":

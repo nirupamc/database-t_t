@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ResumeStudioPage } from "@/components/resume-studio/resume-studio-page";
 
+// Force dynamic rendering since this page uses authentication
+export const dynamic = 'force-dynamic'
+
 /** Resume Studio page – /dashboard/resume-studio */
 export default async function ResumeStudioRoute() {
   console.log('[ResumeStudio] Page loading...');
