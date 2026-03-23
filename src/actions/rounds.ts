@@ -303,6 +303,7 @@ export async function updateRoundAction(payload: unknown) {
             date: new Date(data.date),
             time: data.time,
             timezone: data.timezone,
+            duration: data.duration,
             mode: data.mode,
             vcReceiver: data.vcReceiver ?? "",
             roundStatus: data.roundStatus ?? "PENDING",
