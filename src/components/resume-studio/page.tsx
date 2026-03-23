@@ -17,7 +17,7 @@ export default async function ResumeStudioPageServer() {
 
   // Admin sees all candidates, recruiters see only their assigned candidates
   const candidates = await prisma.candidate.findMany({
-    where: session.user.role === 'ADMIN' 
+    where: session.user.role === 'admin'
       ? {} // Admin sees all
       : { recruiterId: session.user.id }, // Recruiter sees only assigned
     select: {

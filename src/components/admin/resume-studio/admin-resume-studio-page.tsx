@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { JsonValue } from '@prisma/client/runtime/library'
 import {
   Sparkles,
   Search,
@@ -20,7 +21,7 @@ interface OptimizedResumeWithRelations {
   atsResumeUrl: string | null
   formattedResumeUrl: string | null
   jobDescription: string
-  scoreBreakdown: Record<string, any> | null
+  scoreBreakdown: JsonValue
   createdAt: Date
   candidate: {
     id: string
@@ -543,7 +544,10 @@ export function AdminResumeStudioPage({
                   </div>
 
                   {/* Score Breakdown */}
-                  {record.scoreBreakdown && Object.keys(record.scoreBreakdown).length > 0 && (
+                  {record.scoreBreakdown &&
+                    typeof record.scoreBreakdown === 'object' &&
+                    record.scoreBreakdown !== null &&
+                    'breakdown' in record.scoreBreakdown && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold
                         text-muted-foreground uppercase tracking-wide">
@@ -553,7 +557,8 @@ export function AdminResumeStudioPage({
                         md:grid-cols-4 gap-2">
                         {['keywords', 'skills',
                           'experience', 'education'].map(key => {
-                          const breakdown = record.scoreBreakdown?.breakdown as Record<string, any> | undefined
+                          const breakdown =
+                            (record.scoreBreakdown as Record<string, any>)?.breakdown as Record<string, any> | undefined
                           const score = breakdown?.[key] as
                             { score?: number } | undefined
                           const scoreVal = score?.score ?? 0
