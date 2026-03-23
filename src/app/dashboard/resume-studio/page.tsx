@@ -15,7 +15,7 @@ export default async function ResumeStudioRoute() {
 
   console.log('[ResumeStudio] User role:', session.user.role, 'ID:', session.user.id);
 
-  const isAdmin = session.user.role === 'ADMIN';
+  const isAdmin = session.user.role === 'admin';
 
   // Admin sees all candidates, recruiters see only their assigned candidates
   const candidates = await prisma.candidate.findMany({
