@@ -15,17 +15,15 @@ export async function middleware(req: NextRequest) {
   }
 
   // Read the session token cookie directly
-  // NextAuth v5 uses different cookie names depending on environment
+  // NextAuth v5 uses 'authjs' prefix not 'next-auth'
   const sessionToken =
-    req.cookies.get('__Secure-next-auth.session-token')?.value ||
-    req.cookies.get('next-auth.session-token')?.value ||
+    req.cookies.get('__Secure-authjs.session-token')?.value ||
     req.cookies.get('authjs.session-token')?.value ||
-    req.cookies.get('__Secure-authjs.session-token')?.value
+    req.cookies.get('__Secure-next-auth.session-token')?.value ||
+    req.cookies.get('next-auth.session-token')?.value
 
   console.log('[Middleware] Path:', nextUrl.pathname)
-  console.log('[Middleware] Has session cookie:', !!sessionToken)
-  console.log('[Middleware] Cookie value (first 50 chars):',
-    sessionToken?.substring(0, 50))
+  console.log('[Middleware] Session token found:', !!sessionToken)
   console.log('[Middleware] All cookies:',
     req.cookies.getAll().map(c => c.name).join(', '))
 
