@@ -49,15 +49,11 @@ export default function LoginPage() {
   const onSubmit = async (data: FormValues) => {
     setIsLoading(true)
     try {
-      console.log('[Login] Attempting:', data.email)
-
       const result = await signIn('credentials', {
         email: data.email,
         password: data.password,
         redirect: false,
       })
-
-      console.log('[Login] Result:', result)
 
       if (result?.error) {
         toast.error('Invalid email or password')
@@ -65,15 +61,16 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
-        // Give session time to be set in cookie
-        await new Promise(r => setTimeout(r, 300))
+        await new Promise(r => setTimeout(r, 500))
 
         const res = await fetch('/api/auth/session')
         const session = await res.json()
 
-        console.log('[Login] Session after login:', session)
+        console.log('[Login] Session:', session)
 
-        if (session?.user?.role === 'admin') {
+        const role = (session?.user?.role || '').toUpperCase()
+
+        if (role === 'ADMIN') {
           window.location.href = '/admin'
         } else {
           window.location.href = '/dashboard'

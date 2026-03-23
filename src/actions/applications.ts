@@ -30,7 +30,7 @@ const appSchema = z.object({
 
 const updateAppSchema = appSchema.extend({ id: z.string().min(1) });
 
-async function ensureCandidateAccess(candidateId: string, user: { id: string; role: "admin" | "recruiter" }) {
+async function ensureCandidateAccess(candidateId: string, user: { id: string; role: string }) {
   const candidate = await prisma.candidate.findUnique({ where: { id: candidateId } });
   if (!candidate) {
     throw new Error("Candidate not found");

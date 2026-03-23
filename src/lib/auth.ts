@@ -1,113 +1,108 @@
-import NextAuth, { type NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import NextAuth from 'next-auth'
+import Credentials from 'next-auth/providers/credentials'
 
 import { prisma } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 
-export const authConfig = {
-  pages: {
-    signIn: "/login",
-    signOut: "/login",
-    error: "/login",
-  },
-  session: {
-    strategy: "jwt",
-  },
-  trustHost: true, // Required for Vercel deployment
-  cookies: {
-    sessionToken: {
-      name: `next-auth.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-      },
-    },
-  },
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  trustHost: true,
+  secret: process.env.NEXTAUTH_SECRET,
+
   providers: [
     Credentials({
-      name: "Credentials",
+      name: 'credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
-        const password = typeof credentials?.password === "string" ? credentials.password : "";
+        console.log('[Auth] Login attempt for:', credentials?.email)
 
-        console.log("[Auth] Login attempt for:", email);
-
-        if (!email || !password) {
-          console.log("[Auth] Missing email or password");
-          return null;
+        if (!credentials?.email || !credentials?.password) {
+          return null
         }
 
-        let recruiter;
         try {
-          recruiter = await prisma.recruiter.findUnique({ where: { email } });
-          console.log("[Auth] DB lookup result:", recruiter ? `found (role: ${recruiter.role})` : "NOT FOUND");
+          const user = await prisma.recruiter.findUnique({
+            where: {
+              email: credentials.email as string
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              password: true,
+              role: true,
+            }
+          })
+
+          if (!user) {
+            console.log('[Auth] User not found')
+            return null
+          }
+
+          const isValid = await verifyPassword(
+            credentials.password as string,
+            user.password
+          )
+
+          console.log('[Auth] DB lookup result: found (role:', user.role + ')')
+          console.log('[Auth] Password valid:', isValid)
+
+          if (!isValid) return null
+
+          return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+          }
         } catch (error) {
-          console.error("[Auth] DB error during login:", error);
-          throw error;
+          console.error('[Auth] Error:', error)
+          return null
         }
-
-        if (!recruiter) {
-          return null;
-        }
-
-        let isPasswordValid = false;
-        try {
-          isPasswordValid = await verifyPassword(password, recruiter.password);
-          console.log("[Auth] Password valid:", isPasswordValid);
-        } catch (error) {
-          console.error("[Auth] bcrypt error:", error);
-          throw error;
-        }
-
-        if (!isPasswordValid) {
-          return null;
-        }
-
-        return {
-          id: recruiter.id,
-          email: recruiter.email,
-          name: recruiter.name,
-          role: recruiter.role === "ADMIN" ? "admin" : "recruiter",
-        };
       },
     }),
   ],
+
+  session: {
+    strategy: 'jwt',
+    maxAge: 30 * 24 * 60 * 60,
+  },
+
+  pages: {
+    signIn: '/login',
+    error: '/login',
+  },
+
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      // Allows relative callback URLs
-      if (url.startsWith('/')) return `${baseUrl}${url}`
-      // Allows callback URLs on the same origin
-      else if (new URL(url).origin === baseUrl) return url
-      return baseUrl
-    },
     async jwt({ token, user }) {
       if (user) {
-        token.id = user.id;
-        token.role = (user as { role: "admin" | "recruiter" }).role;
+        token.id = user.id
+        token.role = user.role as string
+        token.name = user.name
+        token.email = user.email
       }
-      if (!token.role) {
-        token.role = "recruiter";
-      }
-      return token;
+      return token
     },
+
     async session({ session, token }) {
-      if (session.user && token) {
-        session.user.id = token.id as string ?? token.sub ?? "";
-        session.user.role = (token.role as "admin" | "recruiter" | undefined) ?? "recruiter";
+      if (token && session.user) {
+        session.user.id = token.id as string
+        session.user.role = token.role as string
+        session.user.name = token.name as string
+        session.user.email = token.email as string
       }
-      return session;
+      return session
+    },
+
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+      if (new URL(url).origin === baseUrl) return url
+      return baseUrl
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
-} satisfies NextAuthConfig;
-
-export const { auth, handlers } = NextAuth(authConfig);
+})
 
 export async function getCurrentSession() {
   return auth();
