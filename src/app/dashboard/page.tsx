@@ -39,7 +39,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const candidateWhere = session.user.role === "admin" ? {} : { recruiterId: session.user.id };
+  const candidateWhere = session.user.role.toUpperCase() === "ADMIN" ? {} : { recruiterId: session.user.id };
 
   const [candidates, applications, pendingOffers] = await Promise.all([
     prisma.candidate.findMany({
@@ -54,13 +54,13 @@ export default async function DashboardPage() {
       take: 6,
     }),
     prisma.application.findMany({
-      where: session.user.role === "admin" ? {} : { candidate: { recruiterId: session.user.id } },
+      where: session.user.role.toUpperCase() === "ADMIN" ? {} : { candidate: { recruiterId: session.user.id } },
       include: { rounds: true },
     }),
     prisma.application.count({
       where: {
         status: "OFFER_EXTENDED",
-        ...(session.user.role === "admin" ? {} : { candidate: { recruiterId: session.user.id } }),
+        ...(session.user.role.toUpperCase() === "ADMIN" ? {} : { candidate: { recruiterId: session.user.id } }),
       },
     }),
   ]);

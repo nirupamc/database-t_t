@@ -19,7 +19,7 @@ export default async function ApplicationsPage() {
 
   const applications = await prisma.application.findMany({
     where:
-      session.user.role === "admin"
+      session.user.role.toUpperCase() === "ADMIN"
         ? {}
         : {
             candidate: {

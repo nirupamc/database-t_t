@@ -35,7 +35,7 @@ const roundSchema = z.object({
 
 const updateRoundSchema = roundSchema.extend({ id: z.string().min(1) });
 
-async function ensureApplicationAccess(applicationId: string, user: { id: string; role: "admin" | "recruiter" }) {
+async function ensureApplicationAccess(applicationId: string, user: { id: string; role: string }) {
   const application = await prisma.application.findUnique({
     where: { id: applicationId },
     include: { candidate: true },
@@ -45,7 +45,7 @@ async function ensureApplicationAccess(applicationId: string, user: { id: string
     throw new Error("Application not found");
   }
 
-  if (user.role !== "admin" && application.candidate.recruiterId !== user.id) {
+  if (user.role.toUpperCase() !== "ADMIN" && application.candidate.recruiterId !== user.id) {
     throw new Error("Forbidden");
   }
 

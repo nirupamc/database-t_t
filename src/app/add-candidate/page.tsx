@@ -10,7 +10,7 @@ export default async function AddCandidatePage() {
   const session = await getCurrentSession();
   const recruiters = await prisma.recruiter.findMany({
     where:
-      session?.user?.role === "admin"
+      session?.user?.role.toUpperCase() === "ADMIN"
         ? {}
         : {
             id: session?.user?.id,

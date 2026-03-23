@@ -12,7 +12,7 @@ export async function requireAuth() {
 
 export async function requireAdmin() {
   const user = await requireAuth();
-  if (user.role !== "admin") {
+  if (user.role.toUpperCase() !== "ADMIN") {
     throw new Error("Forbidden");
   }
   return user;
@@ -20,7 +20,7 @@ export async function requireAdmin() {
 
 export async function requireRecruiterOrAdmin() {
   const user = await requireAuth();
-  if (!["admin", "recruiter"].includes(user.role)) {
+  if (!["ADMIN", "RECRUITER"].includes(user.role.toUpperCase())) {
     throw new Error("Forbidden");
   }
   return user;

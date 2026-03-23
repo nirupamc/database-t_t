@@ -35,7 +35,7 @@ export async function listCandidatesAction() {
   const user = await requireRecruiterOrAdmin();
 
   return prisma.candidate.findMany({
-    where: user.role === "admin" ? {} : { recruiterId: user.id },
+    where: user.role.toUpperCase() === "ADMIN" ? {} : { recruiterId: user.id },
     include: {
       recruiter: true,
       applications: {
@@ -65,7 +65,7 @@ export async function getCandidateByIdAction(id: string) {
     return null;
   }
 
-  if (user.role !== "admin" && candidate.recruiterId !== user.id) {
+  if (user.role.toUpperCase() !== "ADMIN" && candidate.recruiterId !== user.id) {
     throw new Error("Forbidden");
   }
 
@@ -91,7 +91,7 @@ export async function createCandidateAction(payload: unknown) {
       noticePeriod: data.noticePeriod,
       expectedCTC: data.expectedCTC,
       status: data.status as CandidateStatus,
-      recruiterId: user.role === "admin" ? data.recruiterId : user.id,
+      recruiterId: user.role.toUpperCase() === "ADMIN" ? data.recruiterId : user.id,
       addedBy: session?.user?.email ?? "system",
       uvPhone: data.uvPhone || null,
       uvPassword: data.uvPassword || null,
@@ -112,7 +112,7 @@ export async function updateCandidateAction(payload: unknown) {
     throw new Error("Candidate not found");
   }
 
-  if (user.role !== "admin" && existing.recruiterId !== user.id) {
+  if (user.role.toUpperCase() !== "ADMIN" && existing.recruiterId !== user.id) {
     throw new Error("Forbidden");
   }
 
@@ -132,7 +132,7 @@ export async function updateCandidateAction(payload: unknown) {
       expectedCTC: data.expectedCTC,
       status: data.status as CandidateStatus,
       // preserve existing recruiterId if admin didn't change it or if recruiter is editing
-      recruiterId: (user.role === "admin" && data.recruiterId) ? data.recruiterId : existing.recruiterId,
+      recruiterId: (user.role.toUpperCase() === "ADMIN" && data.recruiterId) ? data.recruiterId : existing.recruiterId,
       uvPhone: data.uvPhone || null,
       uvPassword: data.uvPassword || null,
     },
@@ -152,7 +152,7 @@ export async function deleteCandidateAction(id: string) {
     throw new Error("Candidate not found");
   }
 
-  if (user.role !== "admin" && existing.recruiterId !== user.id) {
+  if (user.role.toUpperCase() !== "ADMIN" && existing.recruiterId !== user.id) {
     throw new Error("Forbidden");
   }
 

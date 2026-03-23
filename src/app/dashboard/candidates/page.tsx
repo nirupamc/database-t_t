@@ -19,7 +19,7 @@ export default async function CandidatesPage() {
   }
 
   const candidates = await prisma.candidate.findMany({
-    where: session.user.role === "admin" ? {} : { recruiterId: session.user.id },
+    where: session.user.role.toUpperCase() === "ADMIN" ? {} : { recruiterId: session.user.id },
     include: { applications: true },
     orderBy: { createdAt: "desc" },
   });

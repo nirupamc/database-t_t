@@ -65,9 +65,9 @@ export default async function CandidatePage({
     }))
   );
 
-  if (session.user.role !== "admin" && candidate.recruiterId !== session.user.id) {
+  if (session.user.role.toUpperCase() !== "ADMIN" && candidate.recruiterId !== session.user.id) {
     notFound();
   }
 
-  return <CandidateProfile candidate={mapCandidateToView(candidate)} isAdmin={session.user.role === "admin"} />;
+  return <CandidateProfile candidate={mapCandidateToView(candidate)} isAdmin={session.user.role.toUpperCase() === "ADMIN"} />;
 }

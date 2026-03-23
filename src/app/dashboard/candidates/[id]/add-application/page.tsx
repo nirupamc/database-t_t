@@ -33,7 +33,7 @@ export default async function AddApplicationPage({
     notFound();
   }
 
-  if (session.user.role !== "admin" && candidate.recruiterId !== session.user.id) {
+  if (session.user.role.toUpperCase() !== "ADMIN" && candidate.recruiterId !== session.user.id) {
     notFound();
   }
 

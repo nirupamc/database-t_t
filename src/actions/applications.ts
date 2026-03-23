@@ -36,7 +36,7 @@ async function ensureCandidateAccess(candidateId: string, user: { id: string; ro
     throw new Error("Candidate not found");
   }
 
-  if (user.role !== "admin" && candidate.recruiterId !== user.id) {
+  if (user.role.toUpperCase() !== "ADMIN" && candidate.recruiterId !== user.id) {
     throw new Error("Forbidden");
   }
 

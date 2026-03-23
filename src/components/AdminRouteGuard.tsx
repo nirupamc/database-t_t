@@ -13,7 +13,7 @@ export function AdminRouteGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (!session || session.user.role !== "admin") {
+    if (!session || session.user.role.toUpperCase() !== "ADMIN") {
       router.replace("/login");
     }
   }, [router, session, status]);
