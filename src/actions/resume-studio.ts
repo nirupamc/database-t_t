@@ -160,3 +160,113 @@ export async function updateOptimizedResumeAction(
     throw new Error('Failed to update optimized resume record')
   }
 }
+
+/**
+ * Get all optimized resumes across all candidates (for admin)
+ */
+export async function getAllOptimizedResumesAction(filters?: {
+  recruiterId?: string
+  candidateId?: string
+  dateFrom?: string
+  dateTo?: string
+  status?: string
+}) {
+  console.log('[getAllOptimizedResumesAction] filters:', filters)
+
+  try {
+    await requireAuth()
+
+    const optimizedResumes = await prisma.optimizedResume.findMany({
+      where: {
+        ...(filters?.recruiterId && {
+          recruiterId: filters.recruiterId
+        }),
+        ...(filters?.candidateId && {
+          candidateId: filters.candidateId
+        }),
+        ...(filters?.status && {
+          status: filters.status as 'SCORED' | 'OPTIMIZED'
+        }),
+        ...(filters?.dateFrom && {
+          createdAt: {
+            gte: new Date(filters.dateFrom),
+            ...(filters?.dateTo && {
+              lte: new Date(filters.dateTo)
+            })
+          }
+        }),
+      },
+      include: {
+        candidate: {
+          select: {
+            id: true,
+            fullName: true,
+            skills: true,
+          }
+        },
+        recruiter: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+
+    console.log('[getAllOptimizedResumesAction] Found records:', optimizedResumes.length)
+    return optimizedResumes
+
+  } catch (error) {
+    console.error('[getAllOptimizedResumesAction] Error:', error)
+    throw new Error('Failed to fetch all optimized resumes')
+  }
+}
+
+/**
+ * Get all recruiters for filter dropdown (admin)
+ */
+export async function getRecruitersForFilterAction() {
+  console.log('[getRecruitersForFilterAction] Fetching recruiters')
+
+  try {
+    await requireAuth()
+
+    const recruiters = await prisma.recruiter.findMany({
+      where: { role: 'RECRUITER' },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' }
+    })
+
+    console.log('[getRecruitersForFilterAction] Found recruiters:', recruiters.length)
+    return recruiters
+
+  } catch (error) {
+    console.error('[getRecruitersForFilterAction] Error:', error)
+    throw new Error('Failed to fetch recruiters')
+  }
+}
+
+/**
+ * Get all candidates for filter dropdown (admin)
+ */
+export async function getCandidatesForFilterAction() {
+  console.log('[getCandidatesForFilterAction] Fetching candidates')
+
+  try {
+    await requireAuth()
+
+    const candidates = await prisma.candidate.findMany({
+      select: { id: true, fullName: true },
+      orderBy: { fullName: 'asc' }
+    })
+
+    console.log('[getCandidatesForFilterAction] Found candidates:', candidates.length)
+    return candidates
+
+  } catch (error) {
+    console.error('[getCandidatesForFilterAction] Error:', error)
+    throw new Error('Failed to fetch candidates')
+  }
+}

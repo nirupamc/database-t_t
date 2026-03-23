@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/employees", label: "Employees", icon: Users },
   { href: "/admin/candidates", label: "Candidates", icon: UserRound },
+  { href: "/admin/resume-studio", label: "Resume Studio", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -70,9 +72,10 @@ export function AdminSidebar() {
           {navItems.map((item) => {
             const isEmployees = item.label === "Employees" && pathname.startsWith("/admin/employees");
             const isCandidates = item.label === "Candidates" && pathname.startsWith("/admin/candidates");
+            const isResumeStudio = item.label === "Resume Studio" && pathname.startsWith("/admin/resume-studio");
             const isDashboard = item.label === "Dashboard" && pathname === "/admin";
             const isSettings = item.label === "Settings" && pathname === "/admin/settings";
-            const isActive = isEmployees || isCandidates || isDashboard || isSettings;
+            const isActive = isEmployees || isCandidates || isResumeStudio || isDashboard || isSettings;
             return (
               <Link
                 key={item.label}

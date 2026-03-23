@@ -73,11 +73,24 @@ const statusOptions = [
   "On Hold",
 ] as const;
 
-interface AddApplicationFormProps {
-  candidate: Candidate;
+interface OptimizedResumeOption {
+  id: string
+  jobTitle: string
+  company: string | null
+  compatibilityScore: number
+  atsResumeUrl: string | null
+  formattedResumeUrl: string | null
+  optimizedResumeUrl: string | null
+  createdAt: Date
 }
 
-export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
+interface AddApplicationFormProps {
+  candidate: Candidate;
+  originalResumeUrl: string | null;
+  optimizedResumes: OptimizedResumeOption[];
+}
+
+export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResumes }: AddApplicationFormProps) {
   const router = useRouter();
 
   // ── Interview rounds state ──
@@ -85,6 +98,14 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
 
   // ── Status tracking for conditional accordion ──
   const [currentStatus, setCurrentStatus] = useState("Applied");
+
+  // ── Resume selection state ──
+  const [selectedResumeUrl, setSelectedResumeUrl] = useState<string>(
+    originalResumeUrl || ''
+  )
+  const [selectedResumeLabel, setSelectedResumeLabel] = useState<string>(
+    originalResumeUrl ? 'Original Resume' : 'none'
+  )
 
   const {
     register,
@@ -128,6 +149,17 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
   // ── Submit ──
   const onSubmit = async (data: ApplicationFormValues) => {
     try {
+      const resumePayload = {
+        resumeUsedUrl: selectedResumeLabel === 'none'
+          ? null
+          : selectedResumeUrl || null,
+        resumeUsedLabel: selectedResumeLabel === 'none'
+          ? null
+          : selectedResumeLabel || null,
+      };
+
+      console.log('[AddApplicationForm] Submitting with resume:', resumePayload);
+
       await createApplicationAction({
         candidateId: candidate.id,
         jobTitle: data.jobTitle,
@@ -150,6 +182,7 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
                     : data.status === "On Hold"
                       ? "ON_HOLD"
                       : "APPLIED",
+        ...resumePayload,
       });
 
       toast.success("Application added successfully!", {
@@ -296,6 +329,237 @@ export function AddApplicationForm({ candidate }: AddApplicationFormProps) {
             </Select>
             {errors.status && (
               <p className="text-xs text-destructive">{errors.status.message}</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Resume Version Selector ── */}
+      <Card>
+        <CardContent className="p-6 space-y-4">
+          <div>
+            <Label className="text-sm font-medium">
+              Resume Used
+              <span className="text-muted-foreground text-xs ml-2">
+                (optional)
+              </span>
+            </Label>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Select which resume version was submitted for this application
+            </p>
+          </div>
+
+          <div className="space-y-2">
+
+            {/* None option */}
+            <label className={`
+              flex items-center gap-3 p-3 rounded-lg border
+              cursor-pointer transition-colors
+              ${selectedResumeLabel === 'none'
+                ? 'border-yellow-400 bg-yellow-400/5'
+                : 'border-border hover:border-yellow-400/50'
+              }
+            `}>
+              <input
+                type="radio"
+                name="resumeVersion"
+                checked={selectedResumeLabel === 'none'}
+                onChange={() => {
+                  setSelectedResumeUrl('')
+                  setSelectedResumeLabel('none')
+                }}
+                className="accent-yellow-400"
+              />
+              <p className="text-sm text-muted-foreground">
+                Not specified
+              </p>
+            </label>
+
+            {/* Original Resume */}
+            <label className={`
+              flex items-center justify-between gap-3 p-3
+              rounded-lg border cursor-pointer transition-colors
+              ${selectedResumeLabel === 'Original Resume'
+                ? 'border-yellow-400 bg-yellow-400/5'
+                : 'border-border hover:border-yellow-400/50'
+              }
+            `}>
+              <div className="flex items-center gap-3">
+                <input
+                  type="radio"
+                  name="resumeVersion"
+                  checked={selectedResumeLabel === 'Original Resume'}
+                  onChange={() => {
+                    setSelectedResumeUrl(originalResumeUrl || '')
+                    setSelectedResumeLabel('Original Resume')
+                  }}
+                  disabled={!originalResumeUrl}
+                  className="accent-yellow-400"
+                />
+                <div>
+                  <p className={`text-sm font-medium
+                    ${!originalResumeUrl ? 'text-muted-foreground' : ''}
+                  `}>
+                    📄 Original Resume
+                  </p>
+                  {!originalResumeUrl && (
+                    <p className="text-xs text-muted-foreground">
+                      No resume uploaded yet
+                    </p>
+                  )}
+                </div>
+              </div>
+              {originalResumeUrl && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    window.open(
+                      `https://docs.google.com/viewer?url=${encodeURIComponent(originalResumeUrl)}`,
+                      '_blank'
+                    )
+                  }}
+                  className="text-xs text-yellow-400 hover:underline
+                    flex-shrink-0"
+                >
+                  Preview
+                </button>
+              )}
+            </label>
+
+            {/* Optimized Resume Options */}
+            {optimizedResumes.length > 0 ? (
+              optimizedResumes.map(resume => {
+                const primaryUrl = resume.atsResumeUrl ||
+                  resume.optimizedResumeUrl || ''
+                const label = `Optimized: ${resume.jobTitle}${
+                  resume.company ? ` @ ${resume.company}` : ''
+                } — ${resume.compatibilityScore}/10 — ${
+                  new Date(resume.createdAt).toLocaleDateString(
+                    'en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    }
+                  )
+                }`
+
+                return (
+                  <label
+                    key={resume.id}
+                    className={`
+                      flex items-start justify-between gap-3 p-3
+                      rounded-lg border cursor-pointer transition-colors
+                      ${selectedResumeLabel === label
+                        ? 'border-yellow-400 bg-yellow-400/5'
+                        : 'border-border hover:border-yellow-400/50'
+                      }
+                    `}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="resumeVersion"
+                        checked={selectedResumeLabel === label}
+                        onChange={() => {
+                          setSelectedResumeUrl(primaryUrl)
+                          setSelectedResumeLabel(label)
+                        }}
+                        className="accent-yellow-400 mt-0.5"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">
+                          🤖 {resume.jobTitle}
+                          {resume.company && (
+                            <span className="text-muted-foreground
+                              font-normal">
+                              {' '}@ {resume.company}
+                            </span>
+                          )}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs font-bold
+                            text-yellow-400">
+                            {resume.compatibilityScore}/10
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(resume.createdAt)
+                              .toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                              })}
+                          </span>
+                        </div>
+                        {/* Show which versions available */}
+                        <div className="flex gap-1 mt-1">
+                          {resume.atsResumeUrl && (
+                            <span className="text-xs px-1.5 py-0.5
+                              bg-yellow-400/10 text-yellow-400 rounded
+                              border border-yellow-400/20">
+                              ATS
+                            </span>
+                          )}
+                          {resume.formattedResumeUrl && (
+                            <span className="text-xs px-1.5 py-0.5
+                              bg-green-500/10 text-green-500 rounded
+                              border border-green-500/20">
+                              Formatted
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview buttons */}
+                    <div className="flex flex-col gap-1 flex-shrink-0">
+                      {resume.atsResumeUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            window.open(
+                              `https://docs.google.com/viewer?url=${encodeURIComponent(resume.atsResumeUrl!)}`,
+                              '_blank'
+                            )
+                          }}
+                          className="text-xs text-yellow-400
+                            hover:underline"
+                        >
+                          ATS ↗
+                        </button>
+                      )}
+                      {resume.formattedResumeUrl && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            window.open(
+                              `https://docs.google.com/viewer?url=${encodeURIComponent(resume.formattedResumeUrl!)}`,
+                              '_blank'
+                            )
+                          }}
+                          className="text-xs text-green-500
+                            hover:underline"
+                        >
+                          Formatted ↗
+                        </button>
+                      )}
+                    </div>
+                  </label>
+                )
+              })
+            ) : (
+              <div className="p-3 border border-dashed border-border
+                rounded-lg">
+                <p className="text-xs text-muted-foreground text-center">
+                  No optimized resumes yet for this candidate.
+                </p>
+                <p className="text-xs text-muted-foreground text-center
+                  mt-0.5">
+                  Use Resume Studio to generate optimized versions.
+                </p>
+              </div>
             )}
           </div>
         </CardContent>

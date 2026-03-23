@@ -94,19 +94,21 @@ model Candidate {
 }
 
 model Application {
-  id          String            @id @default(cuid())
-  jobTitle    String
-  company     String
-  jobUrl      String
-  source      String
-  techTags    String[]
-  appliedDate DateTime
-  status      ApplicationStatus @default(APPLIED)
-  candidateId String
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  candidate   Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
-  rounds      Round[]
+  id              String            @id @default(cuid())
+  jobTitle        String
+  company         String
+  jobUrl          String
+  source          String
+  techTags        String[]
+  appliedDate     DateTime
+  status          ApplicationStatus @default(APPLIED)
+  candidateId     String
+  resumeUsedUrl   String?
+  resumeUsedLabel String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  rounds          Round[]
 
   @@index([candidateId])
   @@index([status])

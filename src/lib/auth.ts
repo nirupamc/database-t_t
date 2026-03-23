@@ -7,6 +7,7 @@ import { verifyPassword } from "@/lib/password";
 export const authConfig = {
   pages: {
     signIn: "/login",
+    signOut: "/login",
   },
   session: {
     strategy: "jwt",

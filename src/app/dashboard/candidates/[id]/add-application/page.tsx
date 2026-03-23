@@ -34,5 +34,35 @@ export default async function AddApplicationPage({
     notFound();
   }
 
-  return <AddApplicationForm candidate={mapCandidateToView(candidate)} />;
+  // Fetch optimized resumes for this candidate
+  const optimizedResumes = await prisma.optimizedResume.findMany({
+    where: {
+      candidateId: id,
+      status: 'OPTIMIZED',
+      OR: [
+        { atsResumeUrl: { not: null } },
+        { formattedResumeUrl: { not: null } },
+        { optimizedResumeUrl: { not: null } }
+      ]
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      jobTitle: true,
+      company: true,
+      compatibilityScore: true,
+      atsResumeUrl: true,
+      formattedResumeUrl: true,
+      optimizedResumeUrl: true,
+      createdAt: true,
+    }
+  });
+
+  return (
+    <AddApplicationForm
+      candidate={mapCandidateToView(candidate)}
+      originalResumeUrl={candidate.resumeUrl ?? null}
+      optimizedResumes={optimizedResumes}
+    />
+  );
 }

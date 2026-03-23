@@ -414,6 +414,47 @@ export function ApplicationsList({
                 </p>
               )}
             </div>
+
+            {/* Resume Used */}
+            {app.resumeUsedUrl ? (
+              <div className="flex items-center justify-between
+                pt-2 mt-2 border-t border-border">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs flex-shrink-0">📄</span>
+                  <p className="text-xs text-muted-foreground
+                    truncate max-w-[200px]"
+                    title={app.resumeUsedLabel || ''}>
+                    {app.resumeUsedLabel || 'Resume attached'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => window.open(
+                      `https://docs.google.com/viewer?url=${encodeURIComponent(app.resumeUsedUrl!)}`,
+                      '_blank'
+                    )}
+                    className="text-xs text-yellow-400 hover:underline"
+                  >
+                    View
+                  </button>
+
+                  <a
+                    href={app.resumeUsedUrl}
+                    download
+                    className="text-xs text-green-500 hover:underline"
+                  >
+                    Download
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div className="pt-2 mt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground">
+                  📄 No resume attached to this application
+                </p>
+              </div>
+            )}
           </AccordionContent>
         </AccordionItem>
       ))}

@@ -24,6 +24,8 @@ const appSchema = z.object({
     "REJECTED",
     "ON_HOLD",
   ]),
+  resumeUsedUrl: z.string().nullable().optional(),
+  resumeUsedLabel: z.string().nullable().optional(),
 });
 
 const updateAppSchema = appSchema.extend({ id: z.string().min(1) });
@@ -42,8 +44,14 @@ async function ensureCandidateAccess(candidateId: string, user: { id: string; ro
 }
 
 export async function createApplicationAction(payload: unknown) {
+  console.log('[createApplicationAction] payload:', payload)
   const user = await requireRecruiterOrAdmin();
   const data = parseOrThrow(appSchema, payload);
+
+  console.log('[createApplicationAction] parsed data:', {
+    resumeUsedUrl: data.resumeUsedUrl,
+    resumeUsedLabel: data.resumeUsedLabel,
+  });
 
   await ensureCandidateAccess(data.candidateId, user);
 
@@ -57,9 +65,16 @@ export async function createApplicationAction(payload: unknown) {
       techTags: data.techTags,
       appliedDate: new Date(data.appliedDate),
       status: data.status as ApplicationStatus,
+      resumeUsedUrl: data.resumeUsedUrl ?? null,
+      resumeUsedLabel: data.resumeUsedLabel ?? null,
     },
   });
 
+  console.log('[createApplicationAction] created application:', {
+    id: created.id,
+    resumeUsedUrl: created.resumeUsedUrl,
+    resumeUsedLabel: created.resumeUsedLabel,
+  })
   revalidatePath(`/dashboard/candidates/${data.candidateId}`);
   revalidatePath("/dashboard/applications");
   revalidatePath("/admin/candidates");

@@ -22,7 +22,23 @@ export default async function CandidatePage({
       recruiter: true,
       applications: {
         orderBy: { createdAt: "desc" },
-        include: { rounds: { orderBy: { createdAt: "asc" } } },
+        select: {
+          id: true,
+          jobTitle: true,
+          company: true,
+          jobUrl: true,
+          source: true,
+          techTags: true,
+          appliedDate: true,
+          status: true,
+          resumeUsedUrl: true,
+          resumeUsedLabel: true,
+          createdAt: true,
+          updatedAt: true,
+          rounds: {
+            orderBy: { createdAt: "asc" },
+          },
+        },
       },
     },
   });
@@ -35,6 +51,15 @@ export default async function CandidatePage({
   console.log(
     "[CandidateDetail] Total rounds:",
     candidate.applications.reduce((sum, app) => sum + (app.rounds?.length ?? 0), 0)
+  );
+  console.log(
+    "[CandidateDetail] Resume data:",
+    candidate.applications.map(app => ({
+      id: app.id,
+      jobTitle: app.jobTitle,
+      resumeUsedUrl: app.resumeUsedUrl,
+      resumeUsedLabel: app.resumeUsedLabel,
+    }))
   );
 
   if (session.user.role !== "admin" && candidate.recruiterId !== session.user.id) {
