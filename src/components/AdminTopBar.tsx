@@ -2,14 +2,12 @@
 
 import { Bell, LogOut } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
 export function AdminTopBar() {
   const { data: session } = useSession();
-  const router = useRouter();
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/login" });

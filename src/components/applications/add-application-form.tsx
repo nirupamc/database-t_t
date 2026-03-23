@@ -122,6 +122,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
   });
 
   // Watch status to conditionally show interview rounds
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedStatus = watch("status");
 
   // ── Round helpers ──

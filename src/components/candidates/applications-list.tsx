@@ -21,7 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Plus,
-  Trash2,
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
@@ -31,7 +30,6 @@ import { createRoundAction } from "@/actions/rounds";
 import { RoundCard } from "@/components/rounds/round-card";
 import type {
   Application,
-  InterviewRound,
   RoundStatus,
   RoundType,
   InterviewMode,
@@ -121,19 +119,6 @@ export function ApplicationsList({
     resetForm();
   };
 
-  const deleteRound = (appId: string, roundId: string) => {
-    setApplications((prev) =>
-      prev.map((app) => {
-        if (app.id !== appId) return app;
-        return {
-          ...app,
-          rounds: app.rounds.filter((r) => r.id !== roundId),
-        };
-      })
-    );
-    toast.info("Round removed");
-  };
-
   const updateField = <K extends keyof typeof roundForm>(key: K, value: (typeof roundForm)[K]) => {
     setRoundForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -174,7 +159,7 @@ export function ApplicationsList({
       } else {
         toast.error("Failed to save round. Please try again.");
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error("Failed to save round. Please try again.");
     } finally {
       setIsSaving(false);
@@ -246,7 +231,7 @@ export function ApplicationsList({
 
             {app.rounds.length === 0 && (
               <p className="text-sm text-muted-foreground">
-                No interview rounds added yet. Click "+ Add Round" to schedule one.
+                No interview rounds added yet. Click &quot;+ Add Round&quot; to schedule one.
               </p>
             )}
 

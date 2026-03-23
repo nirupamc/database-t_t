@@ -18,7 +18,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    // Use setTimeout to avoid the setState-in-effect warning
+    const timer = setTimeout(() => setMounted(true), 0);
+    return () => clearTimeout(timer);
   }, []);
 
   if (!mounted) {

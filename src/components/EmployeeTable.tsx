@@ -73,6 +73,7 @@ export function EmployeeTable({ employees, onAddEmployee }: EmployeeTableProps) 
     []
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: employees,
     columns,

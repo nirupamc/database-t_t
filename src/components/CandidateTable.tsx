@@ -131,6 +131,7 @@ export function CandidateTable({ candidates }: CandidateTableProps) {
     []
   );
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: filteredData,
     columns,
