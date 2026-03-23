@@ -255,7 +255,7 @@ export async function updateRoundAction(payload: unknown) {
           timezone: data.timezone,
           duration: data.duration,
           mode: data.mode,
-          vcReceiver: data.vcReceiver,
+          vcReceiver: data.vcReceiver ?? "",
         };
 
         // Update personal calendar
@@ -304,7 +304,7 @@ export async function updateRoundAction(payload: unknown) {
             time: data.time,
             timezone: data.timezone,
             mode: data.mode,
-            vcReceiver: data.vcReceiver,
+            vcReceiver: data.vcReceiver ?? "",
             roundStatus: data.roundStatus,
           },
           { fullName: candidate.fullName },
