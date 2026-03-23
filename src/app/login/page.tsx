@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getSession, signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -30,7 +29,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
-  const router = useRouter();
   const [forgotOpen, setForgotOpen] = useState(false);
 
   const {
@@ -46,11 +44,15 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (values: FormValues) => {
+    console.log("[Login] Attempting sign in...");
+
     const result = await signIn("credentials", {
       email: values.email,
       password: values.password,
       redirect: false,
     });
+
+    console.log("[Login] SignIn result:", result);
 
     if (!result || result.error) {
       console.error("[Login] signIn error:", result?.error);
@@ -62,17 +64,12 @@ export default function LoginPage() {
       return;
     }
 
+    console.log("[Login] Sign in successful, redirecting...");
     toast.success("Login successful");
 
-    // Refresh router to sync session with server
-    router.refresh();
-
-    // Get updated session after refresh
-    const session = await getSession();
-    const role = session?.user?.role;
-
-    // Use window.location for full page navigation to ensure session is loaded
-    window.location.href = role === "admin" ? "/admin" : "/dashboard";
+    // Use window.location for full page navigation
+    // Middleware will redirect admins from /dashboard to /admin
+    window.location.href = "/dashboard";
   };
 
   return (
