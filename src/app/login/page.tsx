@@ -47,9 +47,9 @@ export default function LoginPage() {
   });
 
   const onSubmit = async (data: FormValues) => {
+    setIsLoading(true)
     try {
-      setIsLoading(true)
-      console.log('[Login] Attempting login for:', data.email)
+      console.log('[Login] Attempting:', data.email)
 
       const result = await signIn('credentials', {
         email: data.email,
@@ -57,49 +57,31 @@ export default function LoginPage() {
         redirect: false,
       })
 
-      console.log('[Login] SignIn result:', result)
+      console.log('[Login] Result:', result)
 
-      if (!result) {
-        toast.error('Login failed. Please try again.')
-        return
-      }
-
-      if (result.error) {
-        console.log('[Login] Error:', result.error)
+      if (result?.error) {
         toast.error('Invalid email or password')
         return
       }
 
-      if (result.ok) {
-        console.log('[Login] Success, fetching session...')
+      if (result?.ok) {
+        // Give session time to be set in cookie
+        await new Promise(r => setTimeout(r, 300))
 
-        // Wait briefly for session to be established
-        await new Promise(resolve => setTimeout(resolve, 500))
+        const res = await fetch('/api/auth/session')
+        const session = await res.json()
 
-        // Fetch the session to get the role
-        const response = await fetch('/api/auth/session')
-        const session = await response.json()
+        console.log('[Login] Session after login:', session)
 
-        console.log('[Login] Session:', session)
-
-        if (session?.user?.role === 'ADMIN') {
-          console.log('[Login] Redirecting to /admin')
-          router.push('/admin')
-          router.refresh()
-        } else if (session?.user?.role === 'RECRUITER') {
-          console.log('[Login] Redirecting to /dashboard')
-          router.push('/dashboard')
-          router.refresh()
+        if (session?.user?.role === 'admin') {
+          window.location.href = '/admin'
         } else {
-          console.log('[Login] No role found, redirecting to /dashboard')
-          router.push('/dashboard')
-          router.refresh()
+          window.location.href = '/dashboard'
         }
       }
-
     } catch (error) {
-      console.error('[Login] Unexpected error:', error)
-      toast.error('Something went wrong. Please try again.')
+      console.error('[Login] Error:', error)
+      toast.error('Something went wrong')
     } finally {
       setIsLoading(false)
     }

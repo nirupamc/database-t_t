@@ -1,56 +1,70 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
-  const { pathname, searchParams } = request.nextUrl;
-  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const role = token?.role;
+export default auth((req) => {
+  const { nextUrl, auth: session } = req
+  const isLoggedIn = !!session?.user
+  const userRole = session?.user?.role
 
-  // Add debugging
-  console.log("[Middleware]", {
-    pathname,
-    hasToken: !!token,
-    role: token?.role,
-    email: token?.email,
-    tokenKeys: token ? Object.keys(token) : [],
-  });
+  console.log('[Middleware] Path:', nextUrl.pathname)
+  console.log('[Middleware] IsLoggedIn:', isLoggedIn)
+  console.log('[Middleware] Role:', userRole)
 
-  const isAuthRoute = pathname.startsWith("/login");
-  const isAdminRoute = pathname.startsWith("/admin");
-  const isRecruiterRoute =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/add-candidate") || pathname.startsWith("/settings");
+  // Public paths that don't need auth
+  const isPublicPath =
+    nextUrl.pathname === '/login' ||
+    nextUrl.pathname === '/api/auth/callback/credentials' ||
+    nextUrl.pathname.startsWith('/api/auth') ||
+    nextUrl.pathname.startsWith('/_next') ||
+    nextUrl.pathname.startsWith('/favicon')
 
-  // Check if this is a NextAuth callback (signout redirect) or explicit signout
-  const hasCallbackUrl = searchParams.has("callbackUrl");
-  const isExplicitSignout = searchParams.get("signout") === "true";
-
-  if ((isAdminRoute || isRecruiterRoute) && !token) {
-    console.log("[Middleware] No token, redirecting to login");
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+  // Allow public paths
+  if (isPublicPath) {
+    // If logged in and trying to access login page
+    // redirect to appropriate dashboard
+    if (isLoggedIn && nextUrl.pathname === '/login') {
+      if (userRole === 'admin') {
+        return NextResponse.redirect(new URL('/admin', req.url))
+      }
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+    return NextResponse.next()
   }
 
-  if (isAdminRoute && role !== "admin") {
-    console.log("[Middleware] Not admin, redirecting to dashboard");
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Not logged in — redirect to login
+  if (!isLoggedIn) {
+    console.log('[Middleware] Not logged in, redirecting to login')
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  if (isRecruiterRoute && role === "admin") {
-    console.log("[Middleware] Admin accessing recruiter route, redirecting to admin");
-    return NextResponse.redirect(new URL("/admin", request.url));
+  // Admin trying to access recruiter routes
+  if (nextUrl.pathname.startsWith('/dashboard') &&
+      userRole === 'admin') {
+    // Allow admin to access dashboard too
+    return NextResponse.next()
   }
 
-  // Allow access to login page during NextAuth signout flow or explicit signout
-  if (isAuthRoute && token && !hasCallbackUrl && !isExplicitSignout) {
-    console.log("[Middleware] Authenticated user on login page, redirecting to dashboard");
-    return NextResponse.redirect(new URL(role === "admin" ? "/admin" : "/dashboard", request.url));
+  // Recruiter trying to access admin routes
+  if (nextUrl.pathname.startsWith('/admin') &&
+      userRole !== 'admin') {
+    console.log('[Middleware] Non-admin trying to access admin')
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  console.log("[Middleware] Allowing request to continue");
-  return NextResponse.next();
-}
+  // Root path redirect
+  if (nextUrl.pathname === '/') {
+    if (userRole === 'admin') {
+      return NextResponse.redirect(new URL('/admin', req.url))
+    }
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  return NextResponse.next()
+})
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/add-candidate/:path*", "/settings/:path*", "/login"],
-};
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
+  ],
+}
