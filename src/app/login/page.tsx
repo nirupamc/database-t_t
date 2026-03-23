@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,7 +30,9 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const {
     register,
@@ -43,25 +46,62 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (values: FormValues) => {
-    console.log("[Login] Attempting sign in with credentials:", { email: values.email, password: "***" });
-
+  const onSubmit = async (data: FormValues) => {
     try {
-      console.log("[Login] Calling signIn with redirect: true...");
+      setIsLoading(true)
+      console.log('[Login] Attempting login for:', data.email)
 
-      // Use NextAuth's built-in redirect instead of manual redirect
-      await signIn("credentials", {
-        email: values.email,
-        password: values.password,
-        callbackUrl: "/dashboard",
-        redirect: true, // Let NextAuth handle the redirect
-      });
+      const result = await signIn('credentials', {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      })
+
+      console.log('[Login] SignIn result:', result)
+
+      if (!result) {
+        toast.error('Login failed. Please try again.')
+        return
+      }
+
+      if (result.error) {
+        console.log('[Login] Error:', result.error)
+        toast.error('Invalid email or password')
+        return
+      }
+
+      if (result.ok) {
+        console.log('[Login] Success, fetching session...')
+
+        // Wait briefly for session to be established
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        // Fetch the session to get the role
+        const response = await fetch('/api/auth/session')
+        const session = await response.json()
+
+        console.log('[Login] Session:', session)
+
+        if (session?.user?.role === 'ADMIN') {
+          console.log('[Login] Redirecting to /admin')
+          router.push('/admin')
+          router.refresh()
+        } else if (session?.user?.role === 'RECRUITER') {
+          console.log('[Login] Redirecting to /dashboard')
+          router.push('/dashboard')
+          router.refresh()
+        } else {
+          console.log('[Login] No role found, redirecting to /dashboard')
+          router.push('/dashboard')
+          router.refresh()
+        }
+      }
 
     } catch (error) {
-      console.error("[Login] Unexpected error:", error);
-      toast.error("Login failed", {
-        description: error instanceof Error ? error.message : "Please try again.",
-      });
+      console.error('[Login] Unexpected error:', error)
+      toast.error('Something went wrong. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   };
 
@@ -96,9 +136,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
-              disabled={isSubmitting}
+              disabled={isLoading}
             >
-              {isSubmitting ? "Signing in..." : "Login"}
+              {isLoading ? "Signing in..." : "Login"}
             </Button>
 
             <div className="text-center text-sm">
