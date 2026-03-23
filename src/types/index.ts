@@ -72,6 +72,8 @@ export interface Application {
   tags: string[];          // skill/source tags shown as pills
   nextAction?: string;
   rounds: InterviewRound[];
+  resumeUsedUrl?: string | null;
+  resumeUsedLabel?: string | null;
 }
 
 /** Candidate profile */
