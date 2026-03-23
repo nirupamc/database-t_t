@@ -240,7 +240,7 @@ export async function updateRoundAction(payload: unknown) {
   const dateChanged = existing.date.toISOString() !== new Date(data.date).toISOString() || existing.time !== data.time;
   
   // Check if status changed
-  const statusChanged = existing.roundStatus !== data.roundStatus;
+  const statusChanged = existing.roundStatus !== (data.roundStatus ?? "PENDING");
 
   // Handle integrations asynchronously
   (async () => {
@@ -305,11 +305,11 @@ export async function updateRoundAction(payload: unknown) {
             timezone: data.timezone,
             mode: data.mode,
             vcReceiver: data.vcReceiver ?? "",
-            roundStatus: data.roundStatus,
+            roundStatus: data.roundStatus ?? "PENDING",
           },
           { fullName: candidate.fullName },
           { name: recruiter.name, phone: recruiter.phone },
-          data.roundStatus
+          data.roundStatus ?? "PENDING"
         );
       }
     } catch (err) {
