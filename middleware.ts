@@ -56,14 +56,19 @@ export async function middleware(req: NextRequest) {
           Buffer.from(padded, 'base64').toString('utf-8')
         )
         role = (payload.role || '').toUpperCase()
-        console.log('[Middleware] Decoded role:', role)
-        console.log('[Middleware] Full payload:',
-          JSON.stringify(payload))
+        console.log('[Middleware] JWT decoded successfully')
+        console.log('[Middleware] Payload keys:', Object.keys(payload).join(', '))
+        console.log('[Middleware] Payload.role:', payload.role)
+        console.log('[Middleware] Role after uppercase:', role)
+        console.log('[Middleware] Full payload:', JSON.stringify(payload))
         return { payload, role }
+      } else {
+        console.log('[Middleware] JWT does not have 3 parts:', parts.length)
       }
     } catch (e) {
       console.error('[Middleware] JWT decode error:', e)
     }
+    console.log('[Middleware] Returning empty role')
     return { payload: null, role: '' }
   }
 
