@@ -14,7 +14,7 @@ async function main() {
   await prisma.candidate.deleteMany().catch(() => {});
   await prisma.recruiter.deleteMany().catch(() => {});
 
-  const hashed = await hashPassword("Password@123");
+  const hashed = await hashPassword("Admin@Tantech23");
 
   const employees = await prisma.$transaction(
     Array.from({ length: 5 }).map((_, index) =>
@@ -24,7 +24,7 @@ async function main() {
             index === 0
               ? "Admin User"
               : ["Priya Sharma", "Sarah Jenkins", "Rohit Nair", "Ayesha Khan"][index - 1],
-          email: index === 0 ? "admin@hireflow.com" : `recruiter${index}@hireflow.com`,
+          email: index === 0 ? "admin@tantech.com" : `recruiter${index}@hireflow.com`,
           phone: `+91 90000 0000${index}`,
           password: hashed,
           role: index === 0 ? UserRole.ADMIN : UserRole.RECRUITER,
@@ -44,6 +44,7 @@ async function main() {
           fullName: `Candidate ${index + 1}`,
           email: `candidate${index + 1}@mail.com`,
           phone: `+91 98888 10${(index + 10).toString().padStart(2, "0")}`,
+          
           personalLinkedIn: `https://linkedin.com/in/candidate-${index + 1}`,
           profilePhotoUrl: `https://i.pravatar.cc/150?img=${index + 1}`,
           resumeUrl: `https://example.com/resume-${index + 1}.pdf`,
@@ -133,11 +134,11 @@ async function main() {
 
   console.log("Seed complete: 5 employees, 20 candidates, 50 applications, 100 rounds");
   console.log("Login credentials:");
-  console.log("  Admin:      admin@hireflow.com     / Password@123");
-  console.log("  Recruiter1: recruiter1@hireflow.com / Password@123");
-  console.log("  Recruiter2: recruiter2@hireflow.com / Password@123");
-  console.log("  Recruiter3: recruiter3@hireflow.com / Password@123");
-  console.log("  Recruiter4: recruiter4@hireflow.com / Password@123");
+  console.log("  Admin:      admin@tantech.com     / Admin@Tantech23");
+  console.log("  Recruiter1: recruiter1@hireflow.com / Admin@Tantech23");
+  console.log("  Recruiter2: recruiter2@hireflow.com / Admin@Tantech23");
+  console.log("  Recruiter3: recruiter3@hireflow.com / Admin@Tantech23");
+  console.log("  Recruiter4: recruiter4@hireflow.com / Admin@Tantech23");
 }
 
 main()
