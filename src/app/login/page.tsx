@@ -60,10 +60,26 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
-        // Let middleware handle the redirect by navigating to login page
-        // Middleware will check role and redirect appropriately
-        console.log('[Login] Login successful, reloading to trigger middleware redirect')
-        window.location.href = '/login'
+        // Wait a bit for session cookie to be fully set
+        await new Promise(r => setTimeout(r, 1000))
+
+        // Fetch session to get role
+        const res = await fetch('/api/auth/session')
+        const session = await res.json()
+
+        console.log('[Login] Session after login:', JSON.stringify(session, null, 2))
+
+        const role = session?.user?.role?.toUpperCase()
+        console.log('[Login] Role:', role)
+
+        // Redirect based on role
+        if (role === 'ADMIN') {
+          console.log('[Login] Redirecting admin to /admin')
+          window.location.href = '/admin'
+        } else {
+          console.log('[Login] Redirecting recruiter to /dashboard')
+          window.location.href = '/dashboard'
+        }
       }
     } catch (error) {
       console.error('[Login] Error:', error)

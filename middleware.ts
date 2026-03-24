@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req
@@ -14,100 +15,71 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  // Read the session token cookie directly
-  // NextAuth v5 uses 'authjs' prefix not 'next-auth'
-  const sessionToken =
-    req.cookies.get('__Secure-authjs.session-token')?.value ||
-    req.cookies.get('authjs.session-token')?.value ||
-    req.cookies.get('__Secure-next-auth.session-token')?.value ||
-    req.cookies.get('next-auth.session-token')?.value
-
   console.log('[Middleware] Path:', nextUrl.pathname)
-  console.log('[Middleware] Session token found:', !!sessionToken)
-  console.log('[Middleware] All cookies:',
-    req.cookies.getAll().map(c => c.name).join(', '))
 
-  const isLoggedIn = !!sessionToken
-  const isLoginPage = nextUrl.pathname === '/login'
+  try {
+    // Use NextAuth v5 getToken() instead of manual decoding - Edge Runtime compatible
+    const token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+    })
 
-  // Not logged in
-  if (!isLoggedIn) {
-    if (isLoginPage) return NextResponse.next()
-    console.log('[Middleware] No cookie, redirecting to login')
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
+    console.log('[Middleware] Token found:', !!token)
+    console.log('[Middleware] Token role:', token?.role)
 
-  // Helper function to decode JWT payload with proper base64url handling
-  function decodeJWT(token: string) {
-    let role = ''
-    try {
-      // JWT has 3 parts separated by dots
-      const parts = token.split('.')
-      if (parts.length === 3) {
-        // Add padding if needed for base64 decode
-        // Also handle base64url encoding (- instead of +, _ instead of /)
-        const base64 = parts[1]
-          .replace(/-/g, '+')
-          .replace(/_/g, '/')
-        const padded = base64 + '='.repeat(
-          (4 - base64.length % 4) % 4
-        )
-        const payload = JSON.parse(
-          Buffer.from(padded, 'base64').toString('utf-8')
-        )
-        role = (payload.role || '').toUpperCase()
-        console.log('[Middleware] JWT decoded successfully')
-        console.log('[Middleware] Payload keys:', Object.keys(payload).join(', '))
-        console.log('[Middleware] Payload.role:', payload.role)
-        console.log('[Middleware] Role after uppercase:', role)
-        console.log('[Middleware] Full payload:', JSON.stringify(payload))
-        return { payload, role }
-      } else {
-        console.log('[Middleware] JWT does not have 3 parts:', parts.length)
+    const isLoggedIn = !!token
+    const role = token?.role?.toUpperCase() || ''
+    const isLoginPage = nextUrl.pathname === '/login'
+
+    // Not logged in
+    if (!isLoggedIn) {
+      if (isLoginPage) return NextResponse.next()
+      console.log('[Middleware] Not authenticated, redirecting to login')
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    // Logged in on login page - redirect based on role
+    if (isLoginPage) {
+      if (role === 'ADMIN') {
+        console.log('[Middleware] Admin on login page, redirecting to /admin')
+        return NextResponse.redirect(new URL('/admin', req.url))
       }
-    } catch (e) {
-      console.error('[Middleware] JWT decode error:', e)
-    }
-    console.log('[Middleware] Returning empty role')
-    return { payload: null, role: '' }
-  }
-
-  // Logged in on login page
-  if (isLoginPage) {
-    const { role } = decodeJWT(sessionToken)
-
-    if (role === 'ADMIN') {
-      console.log('[Middleware] Admin on login page, redirecting to /admin')
-      return NextResponse.redirect(new URL('/admin', req.url))
-    }
-    console.log('[Middleware] Non-admin on login page, redirecting to /dashboard')
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // Root path
-  if (nextUrl.pathname === '/') {
-    const { role } = decodeJWT(sessionToken)
-
-    if (role === 'ADMIN') {
-      console.log('[Middleware] Admin at root, redirecting to /admin')
-      return NextResponse.redirect(new URL('/admin', req.url))
-    }
-    console.log('[Middleware] Non-admin at root, redirecting to /dashboard')
-    return NextResponse.redirect(new URL('/dashboard', req.url))
-  }
-
-  // Admin route protection
-  if (nextUrl.pathname.startsWith('/admin')) {
-    const { role } = decodeJWT(sessionToken)
-
-    if (role !== 'ADMIN') {
-      console.log('[Middleware] Non-admin accessing /admin (role:', role, '), redirecting to /dashboard')
+      console.log('[Middleware] Non-admin on login page, redirecting to /dashboard')
       return NextResponse.redirect(new URL('/dashboard', req.url))
     }
-    console.log('[Middleware] Admin accessing /admin, allowing')
-  }
 
-  return NextResponse.next()
+    // Root path - redirect based on role
+    if (nextUrl.pathname === '/') {
+      if (role === 'ADMIN') {
+        console.log('[Middleware] Admin at root, redirecting to /admin')
+        return NextResponse.redirect(new URL('/admin', req.url))
+      }
+      console.log('[Middleware] Non-admin at root, redirecting to /dashboard')
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+
+    // Admin route protection
+    if (nextUrl.pathname.startsWith('/admin')) {
+      if (role !== 'ADMIN') {
+        console.log('[Middleware] Non-admin accessing /admin, redirecting to /dashboard')
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+      console.log('[Middleware] Admin accessing /admin, allowing')
+    }
+
+    return NextResponse.next()
+
+  } catch (error) {
+    console.error('[Middleware] Error getting token:', error)
+
+    // Fallback: redirect to login on any error
+    if (nextUrl.pathname !== '/login') {
+      console.log('[Middleware] Token error, redirecting to login')
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    return NextResponse.next()
+  }
 }
 
 export const config = {
