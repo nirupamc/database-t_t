@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
 
 export async function middleware(req: NextRequest) {
   const { nextUrl } = req
@@ -16,86 +15,117 @@ export async function middleware(req: NextRequest) {
   }
 
   console.log('[Middleware] Path:', nextUrl.pathname)
-  console.log('[Middleware] NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET)
+
+  // Check for session cookie (NextAuth v5 uses authjs prefix)
+  const sessionToken =
+    req.cookies.get('__Secure-authjs.session-token')?.value ||
+    req.cookies.get('authjs.session-token')?.value ||
+    req.cookies.get('__Secure-next-auth.session-token')?.value ||
+    req.cookies.get('next-auth.session-token')?.value
+
+  console.log('[Middleware] Session cookie found:', !!sessionToken)
   console.log('[Middleware] Available cookies:', req.cookies.getAll().map(c => c.name).join(', '))
 
-  try {
-    // Use NextAuth v5 getToken() instead of manual decoding - Edge Runtime compatible
-    const token = await getToken({
-      req,
-      secret: process.env.NEXTAUTH_SECRET,
-    })
+  const isLoginPage = nextUrl.pathname === '/login'
+  const isLoggedIn = !!sessionToken
 
-    console.log('[Middleware] Token found:', !!token)
+  // Not logged in - redirect to login
+  if (!isLoggedIn) {
+    if (isLoginPage) return NextResponse.next()
+    console.log('[Middleware] No session cookie, redirecting to login')
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
 
-    // If getToken() fails, try without secret (for debugging)
-    if (!token) {
-      console.log('[Middleware] getToken failed, trying without secret...')
-      try {
-        const tokenWithoutSecret = await getToken({ req })
-        console.log('[Middleware] Token without secret:', !!tokenWithoutSecret)
-      } catch (e) {
-        console.log('[Middleware] Token without secret also failed:', e.message)
-      }
-    }
+  // For logged in users, we need to check their role
+  // Since getToken() isn't working in Edge Runtime, we'll do a different approach
 
-    console.log('[Middleware] Token keys:', token ? Object.keys(token).join(', ') : 'none')
-    console.log('[Middleware] Token role:', token?.role)
-    console.log('[Middleware] Full token:', token ? JSON.stringify(token, null, 2) : 'none')
+  // Logged in on login page - fetch role via internal API call
+  if (isLoginPage) {
+    console.log('[Middleware] User on login page with session, fetching role...')
 
-    const isLoggedIn = !!token
-    const role = token?.role?.toUpperCase() || ''
-    const isLoginPage = nextUrl.pathname === '/login'
+    try {
+      // Make internal request to get session data
+      const sessionResponse = await fetch(new URL('/api/auth/session', req.url), {
+        headers: {
+          cookie: req.headers.get('cookie') || '',
+        },
+      })
 
-    // Not logged in
-    if (!isLoggedIn) {
-      if (isLoginPage) return NextResponse.next()
-      console.log('[Middleware] Not authenticated, redirecting to login')
-      return NextResponse.redirect(new URL('/login', req.url))
-    }
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json()
+        const role = session?.user?.role?.toUpperCase() || ''
 
-    // Logged in on login page - redirect based on role
-    if (isLoginPage) {
-      if (role === 'ADMIN') {
-        console.log('[Middleware] Admin on login page, redirecting to /admin')
-        return NextResponse.redirect(new URL('/admin', req.url))
-      }
-      console.log('[Middleware] Non-admin on login page, redirecting to /dashboard')
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
+        console.log('[Middleware] Fetched role from session API:', role)
 
-    // Root path - redirect based on role
-    if (nextUrl.pathname === '/') {
-      if (role === 'ADMIN') {
-        console.log('[Middleware] Admin at root, redirecting to /admin')
-        return NextResponse.redirect(new URL('/admin', req.url))
-      }
-      console.log('[Middleware] Non-admin at root, redirecting to /dashboard')
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
-
-    // Admin route protection
-    if (nextUrl.pathname.startsWith('/admin')) {
-      if (role !== 'ADMIN') {
-        console.log('[Middleware] Non-admin accessing /admin, redirecting to /dashboard')
+        if (role === 'ADMIN') {
+          console.log('[Middleware] Admin on login page, redirecting to /admin')
+          return NextResponse.redirect(new URL('/admin', req.url))
+        }
+        console.log('[Middleware] Non-admin on login page, redirecting to /dashboard')
         return NextResponse.redirect(new URL('/dashboard', req.url))
       }
-      console.log('[Middleware] Admin accessing /admin, allowing')
+    } catch (error) {
+      console.error('[Middleware] Error fetching session:', error)
     }
 
-    return NextResponse.next()
-
-  } catch (error) {
-    console.error('[Middleware] Error getting token:', error)
-
-    // Fallback: redirect to login on any error
-    if (nextUrl.pathname !== '/login') {
-      console.log('[Middleware] Token error, redirecting to login')
-      return NextResponse.redirect(new URL('/login', req.url))
-    }
-
-    return NextResponse.next()
+    // Fallback to dashboard if we can't determine role
+    console.log('[Middleware] Could not determine role, redirecting to /dashboard')
+    return NextResponse.redirect(new URL('/dashboard', req.url))
   }
+
+  // Root path redirect - same approach
+  if (nextUrl.pathname === '/') {
+    try {
+      const sessionResponse = await fetch(new URL('/api/auth/session', req.url), {
+        headers: {
+          cookie: req.headers.get('cookie') || '',
+        },
+      })
+
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json()
+        const role = session?.user?.role?.toUpperCase() || ''
+
+        if (role === 'ADMIN') {
+          console.log('[Middleware] Admin at root, redirecting to /admin')
+          return NextResponse.redirect(new URL('/admin', req.url))
+        }
+        console.log('[Middleware] Non-admin at root, redirecting to /dashboard')
+        return NextResponse.redirect(new URL('/dashboard', req.url))
+      }
+    } catch (error) {
+      console.error('[Middleware] Error fetching session at root:', error)
+    }
+
+    return NextResponse.redirect(new URL('/dashboard', req.url))
+  }
+
+  // Admin route protection - same approach
+  if (nextUrl.pathname.startsWith('/admin')) {
+    try {
+      const sessionResponse = await fetch(new URL('/api/auth/session', req.url), {
+        headers: {
+          cookie: req.headers.get('cookie') || '',
+        },
+      })
+
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json()
+        const role = session?.user?.role?.toUpperCase() || ''
+
+        if (role !== 'ADMIN') {
+          console.log('[Middleware] Non-admin accessing /admin, redirecting to /dashboard')
+          return NextResponse.redirect(new URL('/dashboard', req.url))
+        }
+        console.log('[Middleware] Admin accessing /admin, allowing')
+      }
+    } catch (error) {
+      console.error('[Middleware] Error checking admin access:', error)
+      return NextResponse.redirect(new URL('/dashboard', req.url))
+    }
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {
