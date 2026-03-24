@@ -16,6 +16,8 @@ export async function middleware(req: NextRequest) {
   }
 
   console.log('[Middleware] Path:', nextUrl.pathname)
+  console.log('[Middleware] NEXTAUTH_SECRET exists:', !!process.env.NEXTAUTH_SECRET)
+  console.log('[Middleware] Available cookies:', req.cookies.getAll().map(c => c.name).join(', '))
 
   try {
     // Use NextAuth v5 getToken() instead of manual decoding - Edge Runtime compatible
@@ -25,6 +27,18 @@ export async function middleware(req: NextRequest) {
     })
 
     console.log('[Middleware] Token found:', !!token)
+
+    // If getToken() fails, try without secret (for debugging)
+    if (!token) {
+      console.log('[Middleware] getToken failed, trying without secret...')
+      try {
+        const tokenWithoutSecret = await getToken({ req })
+        console.log('[Middleware] Token without secret:', !!tokenWithoutSecret)
+      } catch (e) {
+        console.log('[Middleware] Token without secret also failed:', e.message)
+      }
+    }
+
     console.log('[Middleware] Token keys:', token ? Object.keys(token).join(', ') : 'none')
     console.log('[Middleware] Token role:', token?.role)
     console.log('[Middleware] Full token:', token ? JSON.stringify(token, null, 2) : 'none')
