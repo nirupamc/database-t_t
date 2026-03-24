@@ -60,26 +60,9 @@ export default function LoginPage() {
       }
 
       if (result?.ok) {
-        // Wait a bit for session cookie to be fully set
-        await new Promise(r => setTimeout(r, 1000))
-
-        // Fetch session to get role
-        const res = await fetch('/api/auth/session')
-        const session = await res.json()
-
-        console.log('[Login] Session after login:', JSON.stringify(session, null, 2))
-
-        const role = session?.user?.role?.toUpperCase()
-        console.log('[Login] Role:', role)
-
-        // Redirect based on role
-        if (role === 'ADMIN') {
-          console.log('[Login] Redirecting admin to /admin')
-          window.location.href = '/admin'
-        } else {
-          console.log('[Login] Redirecting recruiter to /dashboard')
-          window.location.href = '/dashboard'
-        }
+        // Use NextAuth's built-in redirect instead of manual redirect
+        // This ensures the session cookie is properly set before any redirects
+        window.location.href = '/' // Redirect to root, middleware will handle role-based routing
       }
     } catch (error) {
       console.error('[Login] Error:', error)

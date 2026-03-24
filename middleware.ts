@@ -25,7 +25,9 @@ export async function middleware(req: NextRequest) {
     })
 
     console.log('[Middleware] Token found:', !!token)
+    console.log('[Middleware] Token keys:', token ? Object.keys(token).join(', ') : 'none')
     console.log('[Middleware] Token role:', token?.role)
+    console.log('[Middleware] Full token:', token ? JSON.stringify(token, null, 2) : 'none')
 
     const isLoggedIn = !!token
     const role = token?.role?.toUpperCase() || ''
