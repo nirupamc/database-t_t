@@ -55,29 +55,19 @@ export default function LoginPage() {
 
       if (result?.error) {
         toast.error('Invalid email or password')
+        setIsLoading(false)
         return
       }
 
       if (result?.ok) {
-        await new Promise(r => setTimeout(r, 500))
-
-        const res = await fetch('/api/auth/session')
-        const session = await res.json()
-
-        console.log('[Login] Session:', session)
-
-        const role = (session?.user?.role || '').toUpperCase()
-
-        if (role === 'ADMIN') {
-          window.location.href = '/admin'
-        } else {
-          window.location.href = '/dashboard'
-        }
+        // Let middleware handle the redirect by navigating to login page
+        // Middleware will check role and redirect appropriately
+        console.log('[Login] Login successful, reloading to trigger middleware redirect')
+        window.location.href = '/login'
       }
     } catch (error) {
       console.error('[Login] Error:', error)
       toast.error('Something went wrong')
-    } finally {
       setIsLoading(false)
     }
   };
