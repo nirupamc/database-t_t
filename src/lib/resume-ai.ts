@@ -12,32 +12,69 @@ const openai = new OpenAI({
  */
 export async function extractTextFromDocx(url: string): Promise<string> {
   console.log('[extractTextFromDocx] Processing URL:', url)
+  console.log('[extractTextFromDocx] File extension:', url.split('.').pop())
   
   try {
-    // Fetch the DOCX file
+    // Step 1: Fetch the DOCX file
+    console.log('[extractTextFromDocx] Step 1: Fetching file...')
     const response = await fetch(url)
+
+    console.log('[extractTextFromDocx] Fetch status:', response.status)
+    console.log('[extractTextFromDocx] Content-Type:', response.headers.get('content-type'))
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`)
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
     
+    // Step 2: Get file data
+    console.log('[extractTextFromDocx] Step 2: Reading file data...')
     const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    console.log('[extractTextFromDocx] File size:', arrayBuffer.byteLength)
     
-    // Extract text using mammoth
-    const result = await mammoth.extractRawText({ buffer })
-    const text = result.value.trim()
-    
-    console.log('[extractTextFromDocx] Extracted text length:', text.length)
-    
-    if (!text || text.length < 50) {
-      throw new Error('Extracted text is too short or empty')
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error('File is empty (0 bytes)')
     }
-    
+
+    if (arrayBuffer.byteLength < 100) {
+      throw new Error(`File too small (${arrayBuffer.byteLength} bytes) - might be corrupted`)
+    }
+
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Step 3: Extract text using mammoth
+    console.log('[extractTextFromDocx] Step 3: Extracting text with mammoth...')
+    const result = await mammoth.extractRawText({ buffer })
+
+    console.log('[extractTextFromDocx] Mammoth extraction completed')
+    console.log('[extractTextFromDocx] Mammoth messages:', result.messages?.length || 0)
+
+    if (result.messages && result.messages.length > 0) {
+      console.log('[extractTextFromDocx] Mammoth warnings:', result.messages)
+    }
+
+    const text = result.value.trim()
+    console.log('[extractTextFromDocx] Extracted text length:', text.length)
+    console.log('[extractTextFromDocx] First 200 chars:', text.substring(0, 200))
+
+    // Step 4: Validate extracted text
+    if (!text) {
+      throw new Error('Extracted text is empty - file might be password protected or corrupted')
+    }
+
+    if (text.length < 50) {
+      throw new Error(`Extracted text too short (${text.length} chars): "${text}"`)
+    }
+
+    console.log('[extractTextFromDocx] ✅ Text extraction successful')
     return text
-    
+
   } catch (error) {
-    console.error('[extractTextFromDocx] Error:', error)
-    throw new Error('Failed to extract text from resume file')
+    console.error('[extractTextFromDocx] Detailed error:', {
+      url,
+      error: error.message,
+      stack: error.stack
+    })
+    throw new Error(`Text extraction failed: ${error.message}`)
   }
 }
 
