@@ -100,8 +100,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 
-  // Admin route protection - same approach
+  // Admin route protection - check authentication first, then role
   if (nextUrl.pathname.startsWith('/admin')) {
+    // First check if user is even logged in
+    if (!isLoggedIn) {
+      console.log('[Middleware] Unauthenticated user trying to access /admin, redirecting to login')
+      return NextResponse.redirect(new URL('/login', req.url))
+    }
+
+    // User is logged in, now check their role
     try {
       const sessionResponse = await fetch(new URL('/api/auth/session', req.url), {
         headers: {
@@ -118,10 +125,13 @@ export async function middleware(req: NextRequest) {
           return NextResponse.redirect(new URL('/dashboard', req.url))
         }
         console.log('[Middleware] Admin accessing /admin, allowing')
+      } else {
+        console.log('[Middleware] Session fetch failed for /admin, redirecting to login')
+        return NextResponse.redirect(new URL('/login', req.url))
       }
     } catch (error) {
       console.error('[Middleware] Error checking admin access:', error)
-      return NextResponse.redirect(new URL('/dashboard', req.url))
+      return NextResponse.redirect(new URL('/login', req.url))
     }
   }
 
