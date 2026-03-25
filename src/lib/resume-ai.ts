@@ -12,25 +12,36 @@ const openai = new OpenAI({
  */
 export async function extractTextFromDocx(url: string): Promise<string> {
   console.log('[extractTextFromDocx] Processing URL:', url)
-  console.log('[extractTextFromDocx] File extension:', url.split('.').pop())
-  
+
   try {
+    // Check file extension first
+    const fileExtension = url.split('.').pop()?.toLowerCase()
+    console.log('[extractTextFromDocx] File extension:', fileExtension)
+
+    if (fileExtension === 'doc') {
+      throw new Error('Legacy DOC files are not supported. Please convert your resume to DOCX format and try again. You can do this by opening the file in Microsoft Word and saving as .docx')
+    }
+
+    if (fileExtension !== 'docx') {
+      throw new Error(`Unsupported file format: .${fileExtension}. Only DOCX files are currently supported.`)
+    }
+
     // Step 1: Fetch the DOCX file
     console.log('[extractTextFromDocx] Step 1: Fetching file...')
     const response = await fetch(url)
 
     console.log('[extractTextFromDocx] Fetch status:', response.status)
     console.log('[extractTextFromDocx] Content-Type:', response.headers.get('content-type'))
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     // Step 2: Get file data
     console.log('[extractTextFromDocx] Step 2: Reading file data...')
     const arrayBuffer = await response.arrayBuffer()
     console.log('[extractTextFromDocx] File size:', arrayBuffer.byteLength)
-    
+
     if (arrayBuffer.byteLength === 0) {
       throw new Error('File is empty (0 bytes)')
     }
@@ -74,7 +85,17 @@ export async function extractTextFromDocx(url: string): Promise<string> {
       error: error.message,
       stack: error.stack
     })
-    throw new Error(`Text extraction failed: ${error.message}`)
+
+    // Re-throw with clear error messages based on error type
+    if (error.message.includes('DOC files')) {
+      throw new Error(error.message) // Pass through the clear DOC format message
+    } else if (error.message.includes('Unsupported file format')) {
+      throw new Error(error.message) // Pass through the format error message
+    } else if (error.message.includes('body element') || error.message.includes('docx file')) {
+      throw new Error('File format error: This appears to be a legacy DOC file or corrupted DOCX file. Please save your resume as a DOCX file and try again.')
+    } else {
+      throw new Error(`Text extraction failed: ${error.message}`)
+    }
   }
 }
 
