@@ -1,5 +1,6 @@
 import OpenAI from 'openai'
 import mammoth from 'mammoth'
+import WordExtractor from 'word-extractor'
 
 // Initialize OpenAI client with NVIDIA API
 const openai = new OpenAI({
@@ -7,23 +8,111 @@ const openai = new OpenAI({
   baseURL: 'https://integrate.api.nvidia.com/v1',
 })
 
+// Initialize Word Extractor for DOC files
+const extractor = new WordExtractor()
+
 /**
- * Extract text content from a DOCX file
+ * Extract text content from a DOC file (legacy format)
  */
-export async function extractTextFromDocx(url: string): Promise<string> {
-  console.log('[extractTextFromDocx] Processing URL:', url)
+export async function extractTextFromDoc(url: string): Promise<string> {
+  console.log('[extractTextFromDoc] Processing DOC URL:', url)
 
   try {
-    // Check file extension first
-    const fileExtension = url.split('.').pop()?.toLowerCase()
-    console.log('[extractTextFromDocx] File extension:', fileExtension)
+    // Step 1: Fetch the DOC file
+    console.log('[extractTextFromDoc] Step 1: Fetching file...')
+    const response = await fetch(url)
 
-    if (fileExtension === 'doc') {
-      throw new Error('Legacy DOC files are not supported. Please convert your resume to DOCX format and try again. You can do this by opening the file in Microsoft Word and saving as .docx')
+    console.log('[extractTextFromDoc] Fetch status:', response.status)
+    console.log('[extractTextFromDoc] Content-Type:', response.headers.get('content-type'))
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
 
+    // Step 2: Get file data as buffer
+    console.log('[extractTextFromDoc] Step 2: Reading file data...')
+    const arrayBuffer = await response.arrayBuffer()
+    console.log('[extractTextFromDoc] File size:', arrayBuffer.byteLength)
+
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error('File is empty (0 bytes)')
+    }
+
+    if (arrayBuffer.byteLength < 100) {
+      throw new Error(`File too small (${arrayBuffer.byteLength} bytes) - might be corrupted`)
+    }
+
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Step 3: Extract text using word-extractor
+    console.log('[extractTextFromDoc] Step 3: Extracting text with word-extractor...')
+    const extracted = await extractor.extract(buffer)
+    const text = extracted.getBody().trim()
+
+    console.log('[extractTextFromDoc] Extraction completed')
+    console.log('[extractTextFromDoc] Extracted text length:', text.length)
+    console.log('[extractTextFromDoc] First 200 chars:', text.substring(0, 200))
+
+    // Step 4: Validate extracted text
+    if (!text) {
+      throw new Error('Extracted text is empty - file might be password protected or corrupted')
+    }
+
+    if (text.length < 50) {
+      throw new Error(`Extracted text too short (${text.length} chars): "${text}"`)
+    }
+
+    console.log('[extractTextFromDoc] ✅ DOC text extraction successful')
+    return text
+
+  } catch (error) {
+    console.error('[extractTextFromDoc] ❌ Error details:', {
+      url,
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorType: error.constructor.name
+    })
+
+    throw new Error(`DOC file processing failed: ${error.message}`)
+  }
+}
+
+/**
+ * Universal function to extract text from DOC or DOCX files
+ */
+export async function extractTextFromResume(url: string): Promise<string> {
+  console.log('[extractTextFromResume] Processing resume URL:', url)
+
+  const fileExtension = url.split('.').pop()?.toLowerCase()
+  console.log('[extractTextFromResume] Detected file extension:', fileExtension)
+
+  try {
+    if (fileExtension === 'docx') {
+      console.log('[extractTextFromResume] Routing to DOCX processor...')
+      return await extractTextFromDocx(url)
+    } else if (fileExtension === 'doc') {
+      console.log('[extractTextFromResume] Routing to DOC processor...')
+      return await extractTextFromDoc(url)
+    } else {
+      throw new Error(`Unsupported file format: .${fileExtension}. Please upload DOC or DOCX files only.`)
+    }
+  } catch (error) {
+    console.error('[extractTextFromResume] Universal extractor error:', error.message)
+    throw error // Re-throw to preserve original error message
+  }
+}
+
+/**
+ * Extract text content from a DOCX file (modern format)
+ */
+export async function extractTextFromDocx(url: string): Promise<string> {
+  console.log('[extractTextFromDocx] Processing DOCX URL:', url)
+
+  try {
+    // Verify this is actually a DOCX file
+    const fileExtension = url.split('.').pop()?.toLowerCase()
     if (fileExtension !== 'docx') {
-      throw new Error(`Unsupported file format: .${fileExtension}. Only DOCX files are currently supported.`)
+      throw new Error(`Expected DOCX file, got .${fileExtension}`)
     }
 
     // Step 1: Fetch the DOCX file
@@ -76,26 +165,18 @@ export async function extractTextFromDocx(url: string): Promise<string> {
       throw new Error(`Extracted text too short (${text.length} chars): "${text}"`)
     }
 
-    console.log('[extractTextFromDocx] ✅ Text extraction successful')
+    console.log('[extractTextFromDocx] ✅ DOCX text extraction successful')
     return text
 
   } catch (error) {
-    console.error('[extractTextFromDocx] Detailed error:', {
+    console.error('[extractTextFromDocx] ❌ Error details:', {
       url,
-      error: error.message,
-      stack: error.stack
+      errorMessage: error.message,
+      errorStack: error.stack,
+      errorType: error.constructor.name
     })
 
-    // Re-throw with clear error messages based on error type
-    if (error.message.includes('DOC files')) {
-      throw new Error(error.message) // Pass through the clear DOC format message
-    } else if (error.message.includes('Unsupported file format')) {
-      throw new Error(error.message) // Pass through the format error message
-    } else if (error.message.includes('body element') || error.message.includes('docx file')) {
-      throw new Error('File format error: This appears to be a legacy DOC file or corrupted DOCX file. Please save your resume as a DOCX file and try again.')
-    } else {
-      throw new Error(`Text extraction failed: ${error.message}`)
-    }
+    throw new Error(`DOCX file processing failed: ${error.message}`)
   }
 }
 

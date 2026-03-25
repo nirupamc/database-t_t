@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { extractTextFromDocx, optimizeResumeText, scoreResume } from '@/lib/resume-ai'
+import { extractTextFromResume, optimizeResumeText, scoreResume } from '@/lib/resume-ai'
 import { generateATSDocx, generateFormattedDocx } from '@/lib/resume-docx'
 import { put } from '@vercel/blob'
 import { updateOptimizedResumeAction } from '@/actions/resume-studio'
@@ -51,8 +51,8 @@ export async function POST(req: NextRequest) {
 
     console.log('[API optimize] Optimizing resume for:', record.candidate.fullName)
 
-    // Extract original resume text
-    const resumeText = await extractTextFromDocx(record.candidate.resumeUrl)
+    // Extract original resume text (supports both DOC and DOCX)
+    const resumeText = await extractTextFromResume(record.candidate.resumeUrl)
     console.log('[API optimize] Extracted resume text length:', resumeText.length)
 
     // Use stored score breakdown + suggestions from the scoring step
