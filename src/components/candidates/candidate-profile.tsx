@@ -73,9 +73,22 @@ function CandidateHero({
           <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold">{candidate.name}</h1>
             <p className="text-primary font-medium">{candidate.title} · {candidate.yearsOfExperience}+ years exp</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              📍 {candidate.location} · Open to {candidate.workMode}
-            </p>
+            {/* Only show location and work mode if they have meaningful values */}
+            {(candidate.location && candidate.location !== 'Unknown' && candidate.location !== 'NA') ||
+             (candidate.workMode && candidate.workMode !== 'NA' && candidate.workMode !== 'Unknown') ? (
+              <p className="text-sm text-muted-foreground mt-1">
+                {candidate.location && candidate.location !== 'Unknown' && candidate.location !== 'NA' && (
+                  <>📍 {candidate.location}</>
+                )}
+                {candidate.location && candidate.location !== 'Unknown' && candidate.location !== 'NA' &&
+                 candidate.workMode && candidate.workMode !== 'NA' && candidate.workMode !== 'Unknown' && (
+                  <> · </>
+                )}
+                {candidate.workMode && candidate.workMode !== 'NA' && candidate.workMode !== 'Unknown' && (
+                  <>Open to {candidate.workMode}</>
+                )}
+              </p>
+            ) : null}
 
             {/* Contact icons */}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
@@ -88,8 +101,13 @@ function CandidateHero({
               <a href={`tel:${candidate.phone}`} className="text-muted-foreground hover:text-primary transition-colors">
                 <Phone className="h-4 w-4" />
               </a>
-              <Badge variant="outline" className="text-xs">{candidate.workType.toUpperCase()}</Badge>
-              <Badge variant="outline" className="text-xs">{candidate.workMode.toUpperCase()}</Badge>
+              {/* Only show employment badges if they have meaningful values */}
+              {candidate.workType && candidate.workType !== 'NA' && candidate.workType !== 'Unknown' && (
+                <Badge variant="outline" className="text-xs">{candidate.workType.toUpperCase()}</Badge>
+              )}
+              {candidate.workMode && candidate.workMode !== 'NA' && candidate.workMode !== 'Unknown' && (
+                <Badge variant="outline" className="text-xs">{candidate.workMode.toUpperCase()}</Badge>
+              )}
             </div>
 
             {/* Assigned recruiter */}
