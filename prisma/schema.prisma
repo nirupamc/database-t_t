@@ -70,7 +70,7 @@ model Candidate {
   fullName        String
   email           String          @unique
   phone           String
-  personalLinkedIn String
+  personalLinkedIn String?
   profilePhotoUrl String?
   resumeUrl       String?
   skills          String[]
