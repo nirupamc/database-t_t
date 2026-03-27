@@ -40,9 +40,9 @@ const candidateSchema = z.object({
   phone: z.string().optional(),
   linkedIn: z
     .string()
-    .min(1, "LinkedIn URL is required")
+    .optional()
     .refine(
-      (val) => val.includes("linkedin.com") || val.startsWith("http"),
+      (val) => !val || val.includes("linkedin.com") || val.startsWith("http"),
       "Please enter a valid LinkedIn URL"
     ),
   yearsOfExperience: z.string().optional(),
@@ -233,9 +233,9 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         fullName: data.name,
         email: data.email,
         phone: data.phone || "NA",
-        personalLinkedIn: data.linkedIn.startsWith("http")
-          ? data.linkedIn
-          : `https://${data.linkedIn}`,
+        personalLinkedIn: data.linkedIn
+          ? (data.linkedIn.startsWith("http") ? data.linkedIn : `https://${data.linkedIn}`)
+          : "",
         profilePhotoUrl: "",
         resumeUrl: resumeUrl || "",
         skills,
@@ -340,7 +340,7 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
 
             <div className="space-y-1.5">
               <Label htmlFor="linkedIn">
-                LinkedIn URL <span className="text-destructive">*</span>
+                LinkedIn URL <span className="text-orange-500 text-xs">(optional)</span>
               </Label>
               <div className="relative">
                 <Input
