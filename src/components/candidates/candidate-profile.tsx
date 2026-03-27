@@ -349,7 +349,6 @@ function EditDialog({
                 <Select value={employmentType} onValueChange={setEmploymentType}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
                     <SelectItem value="FULL_TIME">Full-Time</SelectItem>
                     <SelectItem value="PART_TIME">Part-Time</SelectItem>
                     <SelectItem value="FREELANCE">Freelance</SelectItem>
@@ -363,7 +362,6 @@ function EditDialog({
                 <Select value={workMode} onValueChange={setWorkMode}>
                   <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
                     <SelectItem value="ON_SITE">On-Site</SelectItem>
                     <SelectItem value="HYBRID">Hybrid</SelectItem>
                     <SelectItem value="REMOTE">Remote</SelectItem>
@@ -375,7 +373,6 @@ function EditDialog({
                 <Select value={candidateType} onValueChange={setCandidateType}>
                   <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
                     <SelectItem value="OPT">OPT</SelectItem>
                     <SelectItem value="FULL_TIME">Full-Time Employee</SelectItem>
                     <SelectItem value="C2C">C2C (Contractor)</SelectItem>
