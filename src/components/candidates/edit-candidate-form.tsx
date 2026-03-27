@@ -26,8 +26,8 @@ const editSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
   phone: z.string().optional(),
-  linkedIn: z.string().min(1, "LinkedIn URL is required").refine(
-    (val) => val.includes("linkedin.com") || val.startsWith("http"),
+  linkedIn: z.string().optional().refine(
+    (val) => !val || val.includes("linkedin.com") || val.startsWith("http"),
     "Please enter a valid LinkedIn URL"
   ),
   yearsOfExperience: z.string().optional(),
@@ -120,7 +120,9 @@ export function EditCandidateForm({ candidate }: EditCandidateFormProps) {
         fullName: data.name,
         email: data.email,
         phone: data.phone || "NA",
-        personalLinkedIn: data.linkedIn.startsWith("http") ? data.linkedIn : `https://${data.linkedIn}`,
+        personalLinkedIn: data.linkedIn
+          ? (data.linkedIn.startsWith("http") ? data.linkedIn : `https://${data.linkedIn}`)
+          : "",
         profilePhotoUrl: "",
         resumeUrl: "",
         skills,

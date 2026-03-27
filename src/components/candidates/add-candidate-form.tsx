@@ -96,6 +96,8 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
     resolver: zodResolver(candidateSchema),
     defaultValues: {
       noticePeriod: "Immediate",
+      assignedRecruiter: "",
+      linkedIn: "",
     },
   });
 

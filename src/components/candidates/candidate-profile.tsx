@@ -184,7 +184,9 @@ function EditDialog({
         fullName: name,
         email,
         phone: phone || "NA",
-        personalLinkedIn: linkedIn.startsWith("http") ? linkedIn : `https://${linkedIn}`,
+        personalLinkedIn: linkedIn
+          ? (linkedIn.startsWith("http") ? linkedIn : `https://${linkedIn}`)
+          : "",
         profilePhotoUrl: "",
         resumeUrl: "",
         skills,
