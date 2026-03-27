@@ -54,6 +54,9 @@ export interface AdminCandidateView {
   expectedCtc: string;
   resumeLink: string;
   quickNotes: string;
+  employmentType?: string;
+  workMode?: string;
+  candidateType?: string;
   applications: AdminCandidateApplicationView[];
 }
 
@@ -110,6 +113,9 @@ type CandidateWithRelations = {
   expectedCTC: string;
   status: CandidateStatus;
   recruiterId: string;
+  employmentType: string | null;
+  workMode: string | null;
+  candidateType: string | null;
   recruiter: Pick<Recruiter, "id" | "name" | "email">;
   applications: Array<{
     id: string;
@@ -225,6 +231,9 @@ export function mapCandidateToAdminView(candidate: CandidateWithRelations): Admi
     quickNotes:
       candidate.applications.flatMap((application) => application.rounds).find((round) => round.feedback)?.feedback ??
       "No feedback notes have been added yet.",
+    employmentType: candidate.employmentType ?? undefined,
+    workMode: candidate.workMode ?? undefined,
+    candidateType: candidate.candidateType ?? undefined,
     applications: candidate.applications.map((application) => ({
       id: application.id,
       jobTitle: application.jobTitle,

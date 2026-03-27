@@ -172,12 +172,14 @@ export function CandidateDetailModal({
                       </p>
                       <p className="text-sm font-medium text-slate-900 dark:text-foreground">{candidate.phone}</p>
                     </a>
-                    <a href={candidate.linkedInUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 p-3 hover:border-blue-200 hover:bg-blue-50/50">
-                      <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        <ExternalLink className="h-3.5 w-3.5" /> LinkedIn
-                      </p>
-                      <p className="truncate text-sm font-medium text-slate-900 dark:text-foreground">{candidate.linkedInUrl}</p>
-                    </a>
+                    {candidate.linkedInUrl && (
+                      <a href={candidate.linkedInUrl} target="_blank" rel="noreferrer" className="rounded-xl border border-slate-200 p-3 hover:border-blue-200 hover:bg-blue-50/50">
+                        <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                          <ExternalLink className="h-3.5 w-3.5" /> LinkedIn
+                        </p>
+                        <p className="truncate text-sm font-medium text-slate-900 dark:text-foreground">{candidate.linkedInUrl}</p>
+                      </a>
+                    )}
                     <div className="rounded-xl border border-slate-200 p-3">
                       <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                         <MapPin className="h-3.5 w-3.5" /> Location
@@ -202,6 +204,36 @@ export function CandidateDetailModal({
                     </div>
                   </div>
                 </div>
+
+                {(candidate.employmentType || candidate.workMode || candidate.candidateType) && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:bg-card">
+                    <div className="mb-4 flex items-center gap-2">
+                      <User className="h-5 w-5 text-blue-600" />
+                      <h4 className="text-lg font-semibold">Employment Preferences</h4>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {candidate.employmentType && (
+                        <div className="rounded-xl border border-slate-200 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Employment Type</p>
+                          <p className="text-sm font-medium text-slate-900 dark:text-foreground">{candidate.employmentType.replace(/_/g, "-")}</p>
+                        </div>
+                      )}
+                      {candidate.workMode && (
+                        <div className="rounded-xl border border-slate-200 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Work Mode</p>
+                          <p className="text-sm font-medium text-slate-900 dark:text-foreground">{candidate.workMode.replace(/_/g, "-")}</p>
+                        </div>
+                      )}
+                      {candidate.candidateType && (
+                        <div className="rounded-xl border border-slate-200 p-3">
+                          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Candidate Type</p>
+                          <p className="text-sm font-medium text-slate-900 dark:text-foreground">{candidate.candidateType === "C2C" ? "C2C" : candidate.candidateType.replace(/_/g, "-")}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:bg-card">
