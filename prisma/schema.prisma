@@ -37,6 +37,26 @@ enum RoundStatus {
   FAILED
 }
 
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  FREELANCE
+  CONTRACT
+  INTERNSHIP
+}
+
+enum WorkMode {
+  ON_SITE
+  HYBRID
+  REMOTE
+}
+
+enum CandidateType {
+  OPT
+  FULL_TIME
+  C2C
+}
+
 enum OptimizedResumeStatus {
   SCORED
   OPTIMIZED
@@ -83,6 +103,9 @@ model Candidate {
   addedBy         String
   uvPhone         String?
   uvPassword      String?
+  employmentType  EmploymentType?
+  workMode        WorkMode?
+  candidateType   CandidateType?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   recruiter       Recruiter       @relation(fields: [recruiterId], references: [id], onDelete: Cascade)

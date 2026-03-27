@@ -165,6 +165,9 @@ function EditDialog({
   const [uvPhone, setUvPhone] = useState(candidate.uvPhone ?? "");
   const [uvPassword, setUvPassword] = useState(candidate.uvPassword ?? "");
   const [showUvPw, setShowUvPw] = useState(false);
+  const [employmentType, setEmploymentType] = useState(candidate.employmentType ?? "");
+  const [workMode, setWorkMode] = useState(candidate.workMode ?? "");
+  const [candidateType, setCandidateType] = useState(candidate.candidateType ?? "");
   const [saving, setSaving] = useState(false);
 
   const skillSuggestions = ["Java","Python","React","Node.js","Salesforce","AWS","Docker","Kubernetes","Spring Boot","TypeScript","Apex","DevOps","REST APIs","GraphQL","MongoDB","PostgreSQL"];
@@ -198,6 +201,9 @@ function EditDialog({
         recruiterId: "", // server-action preserves existing recruiterId for non-admins
         uvPhone: uvPhone || null,
         uvPassword: uvPassword || null,
+        employmentType: employmentType || null,
+        workMode: workMode || null,
+        candidateType: candidateType || null,
       });
       toast.success("Profile updated!");
       onClose();
@@ -334,6 +340,51 @@ function EditDialog({
             </div>
           </div>
 
+          {/* Employment Preferences */}
+          <div className="border rounded-lg p-4 space-y-4">
+            <p className="font-semibold text-sm">Employment Preferences</p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label>Employment Type</Label>
+                <Select value={employmentType} onValueChange={setEmploymentType}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="FULL_TIME">Full-Time</SelectItem>
+                    <SelectItem value="PART_TIME">Part-Time</SelectItem>
+                    <SelectItem value="FREELANCE">Freelance</SelectItem>
+                    <SelectItem value="CONTRACT">Contract</SelectItem>
+                    <SelectItem value="INTERNSHIP">Internship</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Work Mode</Label>
+                <Select value={workMode} onValueChange={setWorkMode}>
+                  <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="ON_SITE">On-Site</SelectItem>
+                    <SelectItem value="HYBRID">Hybrid</SelectItem>
+                    <SelectItem value="REMOTE">Remote</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Candidate Type</Label>
+                <Select value={candidateType} onValueChange={setCandidateType}>
+                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="OPT">OPT</SelectItem>
+                    <SelectItem value="FULL_TIME">Full-Time Employee</SelectItem>
+                    <SelectItem value="C2C">C2C (Contractor)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
           <div className="flex gap-3 justify-end pt-2">
             <Button variant="outline" onClick={onClose}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="bg-primary">
@@ -439,6 +490,35 @@ function ProfileTab({ candidate }: { candidate: Candidate }) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Employment Preferences */}
+      {(candidate.employmentType || candidate.workMode || candidate.candidateType) && (
+        <Card>
+          <CardContent className="p-5">
+            <p className="font-semibold text-sm mb-3">Employment Preferences</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {candidate.employmentType && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Employment Type</p>
+                  <p className="text-sm font-medium">{candidate.employmentType.replace(/_/g, "-")}</p>
+                </div>
+              )}
+              {candidate.workMode && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Work Mode</p>
+                  <p className="text-sm font-medium">{candidate.workMode.replace(/_/g, "-")}</p>
+                </div>
+              )}
+              {candidate.candidateType && (
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Candidate Type</p>
+                  <p className="text-sm font-medium">{candidate.candidateType === "C2C" ? "C2C" : candidate.candidateType.replace(/_/g, "-")}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Unified Voice Credentials */}
       {(candidate.uvPhone || candidate.uvPassword) && (

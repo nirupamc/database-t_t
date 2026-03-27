@@ -53,6 +53,9 @@ const candidateSchema = z.object({
   quickNotes: z.string().optional(),
   uvPhone: z.string().optional(),
   uvPassword: z.string().optional(),
+  employmentType: z.string().optional(),
+  workMode: z.string().optional(),
+  candidateType: z.string().optional(),
 });
 
 type CandidateFormValues = z.infer<typeof candidateSchema>;
@@ -249,6 +252,9 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
         recruiterId: selectedRecruiter.id,
         uvPhone: data.uvPhone || null,
         uvPassword: data.uvPassword || null,
+        employmentType: data.employmentType || null,
+        workMode: data.workMode || null,
+        candidateType: data.candidateType || null,
       });
 
       toast.success("Candidate created successfully!", {
@@ -716,6 +722,82 @@ export function AddCandidateForm({ recruiters }: { recruiters: RecruiterOption[]
               className="min-h-[100px]"
               {...register("quickNotes")}
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Employment Preferences ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Employment Preferences</CardTitle>
+          <CardDescription>Job type, work mode, and candidate type</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Employment Type */}
+            <div className="space-y-1.5">
+              <Label>
+                Employment Type{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Select
+                value={watch("employmentType") || ""}
+                onValueChange={(val) => setValue("employmentType", val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="FULL_TIME">Full-Time</SelectItem>
+                  <SelectItem value="PART_TIME">Part-Time</SelectItem>
+                  <SelectItem value="FREELANCE">Freelance</SelectItem>
+                  <SelectItem value="CONTRACT">Contract</SelectItem>
+                  <SelectItem value="INTERNSHIP">Internship</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Work Mode */}
+            <div className="space-y-1.5">
+              <Label>
+                Work Mode{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Select
+                value={watch("workMode") || ""}
+                onValueChange={(val) => setValue("workMode", val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ON_SITE">On-Site</SelectItem>
+                  <SelectItem value="HYBRID">Hybrid</SelectItem>
+                  <SelectItem value="REMOTE">Remote</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Candidate Type */}
+            <div className="space-y-1.5">
+              <Label>
+                Candidate Type{" "}
+                <span className="text-orange-500 text-xs">(optional)</span>
+              </Label>
+              <Select
+                value={watch("candidateType") || ""}
+                onValueChange={(val) => setValue("candidateType", val)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="OPT">OPT</SelectItem>
+                  <SelectItem value="FULL_TIME">Full-Time Employee</SelectItem>
+                  <SelectItem value="C2C">C2C (Contractor)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>

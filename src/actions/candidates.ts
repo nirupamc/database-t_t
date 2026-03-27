@@ -24,6 +24,9 @@ const candidateSchema = z.object({
   recruiterId: z.string().min(1),
   uvPhone: z.string().optional().nullable(),
   uvPassword: z.string().optional().nullable(),
+  employmentType: z.enum(["FULL_TIME", "PART_TIME", "FREELANCE", "CONTRACT", "INTERNSHIP"]).optional().nullable(),
+  workMode: z.enum(["ON_SITE", "HYBRID", "REMOTE"]).optional().nullable(),
+  candidateType: z.enum(["OPT", "FULL_TIME", "C2C"]).optional().nullable(),
 });
 
 const updateCandidateSchema = candidateSchema.extend({
@@ -95,6 +98,9 @@ export async function createCandidateAction(payload: unknown) {
       addedBy: session?.user?.email ?? "system",
       uvPhone: data.uvPhone || null,
       uvPassword: data.uvPassword || null,
+      employmentType: data.employmentType || null,
+      workMode: data.workMode || null,
+      candidateType: data.candidateType || null,
     },
   });
 
@@ -135,6 +141,9 @@ export async function updateCandidateAction(payload: unknown) {
       recruiterId: (user.role.toUpperCase() === "ADMIN" && data.recruiterId) ? data.recruiterId : existing.recruiterId,
       uvPhone: data.uvPhone || null,
       uvPassword: data.uvPassword || null,
+      employmentType: data.employmentType || null,
+      workMode: data.workMode || null,
+      candidateType: data.candidateType || null,
     },
   });
 
