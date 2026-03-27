@@ -92,9 +92,11 @@ function CandidateHero({
 
             {/* Contact icons */}
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <a href={`https://${candidate.linkedIn}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
-                <Linkedin className="h-4 w-4" />
-              </a>
+              {candidate.linkedIn && (
+                <a href={`https://${candidate.linkedIn}`} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary transition-colors">
+                  <Linkedin className="h-4 w-4" />
+                </a>
+              )}
               <a href={`mailto:${candidate.email}`} className="text-muted-foreground hover:text-primary transition-colors">
                 <Mail className="h-4 w-4" />
               </a>
