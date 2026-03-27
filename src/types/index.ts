@@ -100,6 +100,8 @@ export interface Candidate {
   createdAt: string;       // ISO date
   uvPhone?: string;
   uvPassword?: string;
+  employmentType?: string;
+  candidateType?: string;
 }
 
 /** Recruiter user (simplified) */

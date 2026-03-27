@@ -13,6 +13,9 @@ type CandidateWithRelations = {
   expectedCTC: string;
   experienceYears: number;
   resumeUrl: string | null;
+  employmentType: string | null;
+  workMode: string | null;
+  candidateType: string | null;
   applications: Array<{
     id: string;
     jobTitle: string;
@@ -111,6 +114,8 @@ export function mapCandidateToView(candidate: CandidateWithRelations): Candidate
     resumeUrl: candidate.resumeUrl ?? undefined,
     assignedRecruiter: candidate.recruiter.name,
     notes: "",
+    employmentType: candidate.employmentType ?? undefined,
+    candidateType: candidate.candidateType ?? undefined,
     applications: candidate.applications.map(mapApplication),
     createdAt: candidate.createdAt.toISOString(),
     uvPhone: candidate.uvPhone ?? undefined,
