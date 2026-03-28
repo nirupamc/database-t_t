@@ -274,13 +274,19 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
 
       payload.resumeUrl = resumeUrl || "";
 
-      await createCandidateAction(payload);
+      const result = await createCandidateAction(payload);
+
+      if (!result.success) {
+        toast.error(result.error || "Failed to create candidate");
+        return;
+      }
 
       toast.success("Candidate created successfully!", {
         description: `${data.name} has been added to the pipeline.`,
       });
       router.push("/dashboard/candidates");
     } catch (error) {
+      console.error("[AddCandidateForm] Error:", error);
       toast.error(error instanceof Error ? error.message : "Failed to create candidate");
     }
   };

@@ -179,7 +179,12 @@ export function EditCandidateForm({ candidate, recruiters, isAdmin }: EditCandid
         uvPassword: data.uvPassword || null,
       };
 
-      await updateCandidateAction(payload);
+      const result = await updateCandidateAction(payload);
+
+      if (!result.success) {
+        toast.error(result.error || "Failed to update candidate");
+        return;
+      }
 
       toast.success("Candidate updated successfully!", {
         description: `${data.name}'s profile has been updated.`,

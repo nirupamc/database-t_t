@@ -103,58 +103,67 @@ export async function createCandidateAction(payload: unknown) {
     revalidatePath("/admin/candidates");
     return { success: true, data: created };
   } catch (error) {
+    console.error("[createCandidateAction] Error:", error);
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      throw new Error("A candidate with this email already exists");
+      return { success: false, error: "A candidate with this email already exists" };
     }
-    throw error;
+    return { success: false, error: "Failed to create candidate. Please try again." };
   }
 }
 
 export async function updateCandidateAction(payload: unknown) {
-  const user = await requireRecruiterOrAdmin();
-  const data = parseOrThrow(updateCandidateSchema, payload);
+  try {
+    const user = await requireRecruiterOrAdmin();
+    const data = parseOrThrow(updateCandidateSchema, payload);
 
-  const existing = await prisma.candidate.findUnique({ where: { id: data.id } });
-  if (!existing) {
-    throw new Error("Candidate not found");
+    const existing = await prisma.candidate.findUnique({ where: { id: data.id } });
+    if (!existing) {
+      return { success: false, error: "Candidate not found" };
+    }
+
+    if (user.role !== "admin" && existing.recruiterId !== user.id) {
+      return { success: false, error: "You don't have permission to edit this candidate" };
+    }
+
+    const normalizedResumeUrl = data.resumeUrl?.trim();
+    const nextResumeUrl =
+      normalizedResumeUrl && normalizedResumeUrl.length > 0
+        ? normalizedResumeUrl
+        : existing.resumeUrl ?? null;
+
+    const updated = await prisma.candidate.update({
+      where: { id: data.id },
+      data: {
+        fullName: data.fullName,
+        email: data.email.toLowerCase(),
+        phone: data.phone,
+        personalLinkedIn: data.personalLinkedIn,
+        profilePhotoUrl: data.profilePhotoUrl || null,
+        resumeUrl: nextResumeUrl,
+        skills: data.skills,
+        experienceYears: data.experienceYears,
+        location: data.location,
+        noticePeriod: data.noticePeriod,
+        expectedCTC: data.expectedCTC,
+        status: data.status as CandidateStatus,
+        recruiterId: user.role === "admin" ? data.recruiterId : existing.recruiterId,
+        uvPhone: data.uvPhone || null,
+        uvPassword: data.uvPassword || null,
+      },
+    });
+
+    revalidatePath("/dashboard/candidates");
+    revalidatePath("/admin/candidates");
+    revalidatePath(`/dashboard/candidates/${data.id}`);
+    revalidatePath(`/admin/candidates/${data.id}`);
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("[updateCandidateAction] Error:", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { success: false, error: "A candidate with this email already exists" };
+    }
+    return { success: false, error: "Failed to update candidate. Please try again." };
   }
-
-  if (user.role !== "admin" && existing.recruiterId !== user.id) {
-    throw new Error("Forbidden");
-  }
-
-  const normalizedResumeUrl = data.resumeUrl?.trim();
-  const nextResumeUrl =
-    normalizedResumeUrl && normalizedResumeUrl.length > 0
-      ? normalizedResumeUrl
-      : existing.resumeUrl ?? null;
-
-  const updated = await prisma.candidate.update({
-    where: { id: data.id },
-    data: {
-      fullName: data.fullName,
-      email: data.email.toLowerCase(),
-      phone: data.phone,
-      personalLinkedIn: data.personalLinkedIn,
-      profilePhotoUrl: data.profilePhotoUrl || null,
-      resumeUrl: nextResumeUrl,
-      skills: data.skills,
-      experienceYears: data.experienceYears,
-      location: data.location,
-      noticePeriod: data.noticePeriod,
-      expectedCTC: data.expectedCTC,
-      status: data.status as CandidateStatus,
-      recruiterId: user.role === "admin" ? data.recruiterId : existing.recruiterId,
-      uvPhone: data.uvPhone || null,
-      uvPassword: data.uvPassword || null,
-    },
-  });
-
-  revalidatePath("/dashboard/candidates");
-  revalidatePath("/admin/candidates");
-  revalidatePath(`/dashboard/candidates/${data.id}`);
-  revalidatePath(`/admin/candidates/${data.id}`);
-  return { success: true, data: updated };
 }
 
 export async function deleteCandidateAction(id: string) {
