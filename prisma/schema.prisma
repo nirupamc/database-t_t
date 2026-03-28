@@ -146,6 +146,8 @@ model OptimizedResume {
   jobDescription      String   @db.Text
   originalResumeUrl   String
   optimizedResumeUrl  String?
+  atsResumeUrl        String?
+  formattedResumeUrl  String?
   compatibilityScore  Int
   scoreBreakdown      Json
   status              OptimizedResumeStatus @default(SCORED)

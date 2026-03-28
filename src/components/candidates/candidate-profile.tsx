@@ -80,7 +80,7 @@ function CandidateHero({ candidate }: { candidate: Candidate }) {
                 size="sm"
                 className="border-primary/50 text-primary hover:bg-primary/10"
                 onClick={() => window.open(
-                  `https://docs.google.com/viewer?url=${encodeURIComponent(candidate.resumeUrl)}`,
+                  `https://docs.google.com/viewer?url=${encodeURIComponent(candidate.resumeUrl!)}`,
                   '_blank'
                 )}
               >
@@ -91,8 +91,10 @@ function CandidateHero({ candidate }: { candidate: Candidate }) {
                 <FileText className="h-4 w-4 mr-1" /> No Resume
               </Button>
             )}
-            <Button variant="outline" size="sm">
-              <Pencil className="h-4 w-4 mr-1" /> Edit Profile
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/dashboard/candidates/${candidate.id}/edit`}>
+                <Pencil className="h-4 w-4 mr-1" /> Edit Profile
+              </Link>
             </Button>
             <Button size="sm" className="bg-primary">
               <FileDown className="h-4 w-4 mr-1" /> Export PDF

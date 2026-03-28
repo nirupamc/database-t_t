@@ -44,7 +44,7 @@ const candidateSchema = z.object({
       (val) => val.includes("linkedin.com") || val.startsWith("http"),
       "Please enter a valid LinkedIn URL"
     ),
-  yearsOfExperience: z.string().optional(),
+  yearsOfExperience: z.string().min(1, "Please select years of experience"),
   location: z.string().optional(),
   noticePeriod: z.string().optional(),
   expectedCtc: z.string().optional(),
@@ -620,14 +620,35 @@ export function AddCandidateForm({ recruiters, isAdmin = false }: { recruiters: 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="yearsOfExperience">
-                Years of Experience <span className="text-orange-500 text-xs">(optional)</span>
+                Years of Experience <span className="text-red-500">*</span>
               </Label>
-              <Input
-                id="yearsOfExperience"
-                type="number"
-                placeholder="5"
-                {...register("yearsOfExperience")}
-              />
+              <Select
+                value={watch("yearsOfExperience") || ""}
+                onValueChange={(value) => setValue("yearsOfExperience", value)}
+              >
+                <SelectTrigger id="yearsOfExperience">
+                  <SelectValue placeholder="Select experience" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Fresher (0 years)</SelectItem>
+                  <SelectItem value="1">1 year</SelectItem>
+                  <SelectItem value="2">2 years</SelectItem>
+                  <SelectItem value="3">3 years</SelectItem>
+                  <SelectItem value="4">4 years</SelectItem>
+                  <SelectItem value="5">5 years</SelectItem>
+                  <SelectItem value="6">6 years</SelectItem>
+                  <SelectItem value="7">7 years</SelectItem>
+                  <SelectItem value="8">8 years</SelectItem>
+                  <SelectItem value="9">9 years</SelectItem>
+                  <SelectItem value="10">10 years</SelectItem>
+                  <SelectItem value="12">12+ years</SelectItem>
+                  <SelectItem value="15">15+ years</SelectItem>
+                  <SelectItem value="20">20+ years</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.yearsOfExperience && (
+                <p className="text-xs text-red-500">{errors.yearsOfExperience.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
