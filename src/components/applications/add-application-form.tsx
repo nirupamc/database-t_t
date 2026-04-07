@@ -49,8 +49,8 @@ import { createApplicationAction } from "@/actions/applications";
 
 // ── Zod schema ──
 const applicationSchema = z.object({
-  jobTitle: z.string().min(2, "Job title is required"),
-  company: z.string().min(1, "Company / client is required"),
+  jobTitle: z.string().optional().default(""),
+  company: z.string().optional().default(""),
   jobPostingUrl: z
     .string()
     .min(1, "Job posting URL is required")
@@ -249,7 +249,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="jobTitle">
-                Job Title <span className="text-destructive">*</span>
+                Job Title <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Input
                 id="jobTitle"
@@ -263,7 +263,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
 
             <div className="space-y-1.5">
               <Label htmlFor="company">
-                Company / Client <span className="text-destructive">*</span>
+                Company / Client <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Input
                 id="company"

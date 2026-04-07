@@ -9,8 +9,8 @@ import { prisma } from "@/lib/prisma";
 
 const appSchema = z.object({
   candidateId: z.string().min(1),
-  jobTitle: z.string().min(2),
-  company: z.string().min(2),
+  jobTitle: z.string().optional().default(""),
+  company: z.string().optional().default(""),
   jobUrl: z.string().url(),
   source: z.string().min(1),
   techTags: z.array(z.string()).default([]),

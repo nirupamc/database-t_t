@@ -60,14 +60,14 @@ export function AdminCandidateCard({ candidate, onViewDetails }: AdminCandidateC
             </div>
 
             <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-              <a href={`mailto:${candidate.email}`} className="flex items-center gap-2 hover:text-blue-600">
+              <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 <span className="truncate">{candidate.email}</span>
-              </a>
-              <a href={`tel:${candidate.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 hover:text-blue-600">
+              </div>
+              <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4" />
                 <span>{candidate.phone}</span>
-              </a>
+              </div>
             </div>
           </div>
 

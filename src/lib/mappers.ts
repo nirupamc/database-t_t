@@ -94,6 +94,41 @@ function mapApplication(application: CandidateWithRelations["applications"][numb
   };
 }
 
+// Map employment type from database to display format
+function formatEmploymentType(type: string | null): string {
+  if (!type) return "Full-time";
+  const map: Record<string, string> = {
+    FULL_TIME: "Full-time",
+    PART_TIME: "Part-time",
+    FREELANCE: "Freelance",
+    CONTRACT: "Contract",
+    INTERNSHIP: "Internship",
+  };
+  return map[type] || type;
+}
+
+// Map work mode from database to display format
+function formatWorkMode(mode: string | null): string {
+  if (!mode) return "Hybrid";
+  const map: Record<string, string> = {
+    ON_SITE: "Onsite",
+    HYBRID: "Hybrid",
+    REMOTE: "Remote",
+  };
+  return map[mode] || mode;
+}
+
+// Map candidate type from database to display format
+function formatCandidateType(type: string | null): string {
+  if (!type) return "";
+  const map: Record<string, string> = {
+    OPT: "OPT",
+    FULL_TIME: "Full-time",
+    C2C: "C2C",
+  };
+  return map[type] || type;
+}
+
 export function mapCandidateToView(candidate: CandidateWithRelations): Candidate {
   return {
     id: candidate.id,
@@ -104,8 +139,8 @@ export function mapCandidateToView(candidate: CandidateWithRelations): Candidate
     linkedIn: candidate.personalLinkedIn,
     avatarUrl: candidate.profilePhotoUrl ?? "",
     location: candidate.location,
-    workType: "Full-time",
-    workMode: "Hybrid",
+    workType: formatEmploymentType(candidate.employmentType),
+    workMode: formatWorkMode(candidate.workMode),
     skills: candidate.skills,
     noticePeriod: candidate.noticePeriod,
     currentCtc: "Confidential",
@@ -115,7 +150,7 @@ export function mapCandidateToView(candidate: CandidateWithRelations): Candidate
     assignedRecruiter: candidate.recruiter.name,
     notes: "",
     employmentType: candidate.employmentType ?? undefined,
-    candidateType: candidate.candidateType ?? undefined,
+    candidateType: formatCandidateType(candidate.candidateType) || undefined,
     applications: candidate.applications.map(mapApplication),
     createdAt: candidate.createdAt.toISOString(),
     uvPhone: candidate.uvPhone ?? undefined,

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteCandidateAction, updateCandidateAction } from "@/actions/candidates";
+import { deleteCandidateAction, reassignCandidateAction } from "@/actions/candidates";
 import { AdminCandidateCard } from "@/components/AdminCandidateCard";
 import { CandidateDetailModal } from "@/components/CandidateDetailModal";
 import { Card, CardContent } from "@/components/ui/card";
@@ -95,30 +95,14 @@ export function AdminCandidatesPageClient({ initialCandidates, recruiterOptions 
   };
 
   const handleReassign = async (candidateId: string, recruiterId: string) => {
-    const current = candidates.find((candidate) => candidate.id === candidateId);
     const recruiter = recruiterOptions.find((item) => item.id === recruiterId);
-    if (!current || !recruiter) {
+    if (!recruiter) {
       return;
     }
 
     startTransition(async () => {
       try {
-        await updateCandidateAction({
-          id: current.id,
-          fullName: current.name,
-          email: current.email,
-          phone: current.phone,
-          personalLinkedIn: current.linkedInUrl,
-          profilePhotoUrl: current.avatarUrl ?? "",
-          resumeUrl: current.resumeLink === "#" ? "" : current.resumeLink,
-          skills: current.title === "Candidate" ? [] : [current.title.replace(/ Specialist$/, "")],
-          experienceYears: current.experienceYears,
-          location: current.location,
-          noticePeriod: current.noticePeriod,
-          expectedCTC: current.expectedCtc,
-          status: "ACTIVE",
-          recruiterId,
-        });
+        await reassignCandidateAction(candidateId, recruiterId);
         setCandidates((prev) =>
           prev.map((candidate) =>
             candidate.id === candidateId

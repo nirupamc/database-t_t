@@ -13,8 +13,8 @@ const candidateSchema = z.object({
   email: z.string().email(),
   phone: z.string().min(2),
   personalLinkedIn: z.string().url().optional().or(z.literal("")),
-  profilePhotoUrl: z.string().optional().nullable(),
-  resumeUrl: z.string().optional().nullable(),
+  profilePhotoUrl: z.string().optional().nullable().or(z.literal("")),
+  resumeUrl: z.string().optional().nullable().or(z.literal("")),
   skills: z.array(z.string()).default([]),
   experienceYears: z.number().int().nonnegative(),
   location: z.string().min(2),
@@ -169,5 +169,36 @@ export async function deleteCandidateAction(id: string) {
 
   revalidatePath("/dashboard/candidates");
   revalidatePath("/admin/candidates");
+  return { success: true };
+}
+
+// Simple action to reassign a candidate to a different recruiter (admin only)
+export async function reassignCandidateAction(candidateId: string, newRecruiterId: string) {
+  const user = await requireRecruiterOrAdmin();
+  
+  // Only admin can reassign
+  if (user.role.toUpperCase() !== "ADMIN") {
+    throw new Error("Only admins can reassign candidates");
+  }
+
+  console.log('[reassignCandidateAction] Reassigning candidate:', candidateId, 'to recruiter:', newRecruiterId);
+
+  const candidate = await prisma.candidate.findUnique({
+    where: { id: candidateId },
+  });
+
+  if (!candidate) {
+    throw new Error("Candidate not found");
+  }
+
+  await prisma.candidate.update({
+    where: { id: candidateId },
+    data: { recruiterId: newRecruiterId },
+  });
+
+  revalidatePath("/dashboard/candidates");
+  revalidatePath("/admin/candidates");
+  revalidatePath(`/dashboard/candidates/${candidateId}`);
+  
   return { success: true };
 }

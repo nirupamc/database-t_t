@@ -110,6 +110,9 @@ function CandidateHero({
               {candidate.workMode && candidate.workMode !== 'NA' && candidate.workMode !== 'Unknown' && (
                 <Badge variant="outline" className="text-xs">{candidate.workMode.toUpperCase()}</Badge>
               )}
+              {candidate.candidateType && candidate.candidateType !== 'NA' && candidate.candidateType !== 'Unknown' && (
+                <Badge variant="outline" className="text-xs bg-yellow-400/10 text-yellow-400 border-yellow-400/30">{candidate.candidateType.toUpperCase()}</Badge>
+              )}
             </div>
 
             {/* Assigned recruiter */}

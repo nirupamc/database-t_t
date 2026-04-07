@@ -29,7 +29,13 @@ export async function requireRecruiterOrAdmin() {
 export function parseOrThrow<T>(schema: z.ZodSchema<T>, payload: unknown): T {
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Invalid data");
+    console.error('[parseOrThrow] Validation errors:', JSON.stringify(parsed.error.issues, null, 2));
+    console.error('[parseOrThrow] Payload received:', JSON.stringify(payload, null, 2));
+    const firstIssue = parsed.error.issues[0];
+    const errorMessage = firstIssue 
+      ? `${firstIssue.path.join('.')}: ${firstIssue.message}`
+      : "Invalid data";
+    throw new Error(errorMessage);
   }
   return parsed.data;
 }
