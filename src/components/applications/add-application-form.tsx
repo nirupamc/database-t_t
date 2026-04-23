@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useState } from "react";
@@ -46,11 +46,12 @@ import {
 } from "@/components/applications/round-form-block";
 import type { Candidate } from "@/types";
 import { createApplicationAction } from "@/actions/applications";
+import { checkDuplicateApplicationAction } from "@/actions/targets";
 
 // ── Zod schema ──
 const applicationSchema = z.object({
-  jobTitle: z.string().optional().default(""),
-  company: z.string().optional().default(""),
+  jobTitle: z.string().default(""),
+  company: z.string().default(""),
   jobPostingUrl: z
     .string()
     .min(1, "Job posting URL is required")
@@ -106,6 +107,19 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
   const [selectedResumeLabel, setSelectedResumeLabel] = useState<string>(
     originalResumeUrl ? 'Original Resume' : 'none'
   )
+  const [duplicateWarning, setDuplicateWarning] = useState<{
+    isDuplicate: boolean
+    company: string
+    jobTitle: string
+    status: string
+    appliedDate: Date
+    submittedBy: string
+  } | null>(null)
+  const [sameCompanyWarning, setSameCompanyWarning] = useState<{
+    jobTitle: string
+    status: string
+  } | null>(null)
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false)
 
   const {
     register,
@@ -113,8 +127,9 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
     formState: { errors, isSubmitting },
     setValue,
     watch,
+    getValues,
   } = useForm<ApplicationFormValues>({
-    resolver: zodResolver(applicationSchema),
+    resolver: zodResolver(applicationSchema) as Resolver<ApplicationFormValues>,
     defaultValues: {
       applicationDate: new Date().toISOString().split("T")[0],
       status: "Applied",
@@ -122,7 +137,6 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
   });
 
   // Watch status to conditionally show interview rounds
-  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedStatus = watch("status");
 
   // ── Round helpers ──
@@ -147,9 +161,45 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
     }
   };
 
+  const checkForDuplicate = async (company: string, jobTitle: string) => {
+    if (!company.trim() || !jobTitle.trim()) return
+    if (company.trim().length < 2 || jobTitle.trim().length < 2) return
+
+    setIsCheckingDuplicate(true)
+    try {
+      const result = await checkDuplicateApplicationAction({
+        candidateId: candidate.id,
+        company: company.trim(),
+        jobTitle: jobTitle.trim(),
+      })
+
+      if (result.isDuplicate && result.existingApplication) {
+        setDuplicateWarning({
+          ...result.existingApplication,
+          isDuplicate: true,
+        })
+        setSameCompanyWarning(null)
+      } else if (result.sameCompanyExists && result.sameCompanyApplication) {
+        setSameCompanyWarning(result.sameCompanyApplication)
+        setDuplicateWarning(null)
+      } else {
+        setDuplicateWarning(null)
+        setSameCompanyWarning(null)
+      }
+    } catch (error) {
+      console.error('Duplicate check failed:', error)
+    } finally {
+      setIsCheckingDuplicate(false)
+    }
+  }
+
   // ── Submit ──
   const onSubmit = async (data: ApplicationFormValues) => {
     try {
+      if (duplicateWarning) {
+        toast.warning('This application matches an existing record. You can still continue if needed.')
+      }
+
       const resumePayload = {
         resumeUsedUrl: selectedResumeLabel === 'none'
           ? null
@@ -251,11 +301,29 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
               <Label htmlFor="jobTitle">
                 Job Title <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
-              <Input
-                id="jobTitle"
-                placeholder="e.g. Senior Backend Engineer"
-                {...register("jobTitle")}
-              />
+              {(() => {
+                const jobTitleField = register("jobTitle");
+                return (
+                  <Input
+                    id="jobTitle"
+                    placeholder="e.g. Senior Backend Engineer"
+                    {...jobTitleField}
+                    onChange={(event) => {
+                      jobTitleField.onChange(event)
+                      setDuplicateWarning(null)
+                      setSameCompanyWarning(null)
+                    }}
+                    onBlur={async (event) => {
+                      jobTitleField.onBlur(event)
+                      const jobTitleValue = event.target.value || ""
+                      const companyValue = getValues("company") || ""
+                      if (companyValue && jobTitleValue) {
+                        await checkForDuplicate(companyValue, jobTitleValue)
+                      }
+                    }}
+                  />
+                )
+              })()}
               {errors.jobTitle && (
                 <p className="text-xs text-destructive">{errors.jobTitle.message}</p>
               )}
@@ -265,16 +333,95 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
               <Label htmlFor="company">
                 Company / Client <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
-              <Input
-                id="company"
-                placeholder="e.g. TechNova Solutions"
-                {...register("company")}
-              />
+              {(() => {
+                const companyField = register("company");
+                return (
+                  <Input
+                    id="company"
+                    placeholder="e.g. TechNova Solutions"
+                    {...companyField}
+                    onChange={(event) => {
+                      companyField.onChange(event)
+                      setDuplicateWarning(null)
+                      setSameCompanyWarning(null)
+                    }}
+                    onBlur={async (event) => {
+                      companyField.onBlur(event)
+                      const companyValue = event.target.value || ""
+                      const jobTitleValue = getValues("jobTitle") || ""
+                      if (companyValue && jobTitleValue) {
+                        await checkForDuplicate(companyValue, jobTitleValue)
+                      }
+                    }}
+                  />
+                )
+              })()}
               {errors.company && (
                 <p className="text-xs text-destructive">{errors.company.message}</p>
               )}
             </div>
           </div>
+
+          {duplicateWarning && (
+            <div className="rounded-xl border-2 border-red-500/30 bg-red-500/10 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-lg text-red-500">⚠️</span>
+                <p className="text-sm font-semibold text-red-500">Duplicate Application Detected!</p>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                This candidate has already been applied to <strong>{duplicateWarning.company}</strong> for <strong>{duplicateWarning.jobTitle}</strong>.
+              </p>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <span>
+                  Status: <strong className="ml-1 text-yellow-400">{duplicateWarning.status}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  Applied: <strong className="ml-1">{new Date(duplicateWarning.appliedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  By: <strong className="ml-1">{duplicateWarning.submittedBy}</strong>
+                </span>
+              </div>
+              <p className="text-xs text-red-400">Submitting again may waste the candidate&apos;s application opportunity. You can still continue if needed.</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDuplicateWarning(null)}
+                  className="rounded-lg border border-red-500/30 bg-red-500/20 px-3 py-1.5 text-xs text-red-400 transition-colors hover:bg-red-500/30"
+                >
+                  Dismiss
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDuplicateWarning(null)}
+                  className="rounded-lg border border-yellow-400/30 bg-yellow-400/20 px-3 py-1.5 text-xs text-yellow-400 transition-colors hover:bg-yellow-400/30"
+                >
+                  Submit Anyway
+                </button>
+              </div>
+            </div>
+          )}
+
+          {sameCompanyWarning && !duplicateWarning && (
+            <div className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-3">
+              <div className="flex items-center gap-2">
+                <span>ℹ️</span>
+                <p className="text-sm font-medium text-yellow-400">Already applied to this company</p>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                This candidate has an existing application at this company for <strong>{sameCompanyWarning.jobTitle}</strong> ({sameCompanyWarning.status}). You can still apply for a different role.
+              </p>
+            </div>
+          )}
+
+          {isCheckingDuplicate && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="h-3 w-3 animate-spin rounded-full border border-muted-foreground border-t-transparent" />
+              Checking for duplicates...
+            </div>
+          )}
 
           {/* Job Posting URL */}
           <div className="space-y-1.5">
@@ -421,7 +568,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
                     )
                   }}
                   className="text-xs text-yellow-400 hover:underline
-                    flex-shrink-0"
+                    shrink-0"
                 >
                   Preview
                 </button>
@@ -513,7 +660,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
                     </div>
 
                     {/* Preview buttons */}
-                    <div className="flex flex-col gap-1 flex-shrink-0">
+                    <div className="flex flex-col gap-1 shrink-0">
                       {resume.atsResumeUrl && (
                         <button
                           type="button"
@@ -622,7 +769,7 @@ export function AddApplicationForm({ candidate, originalResumeUrl, optimizedResu
         <CardContent>
           <Textarea
             placeholder="Any additional context about this application..."
-            className="min-h-[100px]"
+            className="min-h-25"
             {...register("quickNotes")}
           />
         </CardContent>

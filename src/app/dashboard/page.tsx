@@ -7,6 +7,7 @@ import { StatsCards } from "@/components/dashboard/stats-cards";
 import { CandidateCards } from "@/components/dashboard/candidate-cards";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getMyTargetAction } from "@/actions/targets";
 import type { ApplicationStatus } from "@/types";
 
 // Force dynamic rendering since this page uses authentication
@@ -65,6 +66,9 @@ export default async function DashboardPage() {
     }),
   ]);
 
+  const now = new Date();
+  const myTarget = await getMyTargetAction(now.getMonth() + 1, now.getFullYear());
+
   const interviewsThisWeek = applications.reduce(
     (count, application) => count + application.rounds.filter((round) => ["PENDING", "RESCHEDULED"].includes(round.roundStatus)).length,
     0
@@ -107,6 +111,55 @@ export default async function DashboardPage() {
 
       {/* Stats row */}
       <StatsCards dashboardStats={dashboardStats} />
+
+      {myTarget.target && (
+        <div className="rounded-xl border border-border p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-semibold flex items-center gap-2">
+              <span>🎯</span>
+              Monthly Targets
+            </h3>
+            <span className="text-xs text-muted-foreground">
+              {new Date().toLocaleDateString('en-GB', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Applications</span>
+              <span className="font-bold">
+                {myTarget.applicationsCount}
+                <span className="font-normal text-muted-foreground">/{myTarget.target.applicationTarget}</span>
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-border">
+              <div
+                className={`h-2 rounded-full transition-all ${myTarget.applicationProgress >= 100 ? 'bg-green-500' : 'bg-yellow-400'}`}
+                style={{ width: `${myTarget.applicationProgress}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Placements</span>
+              <span className="font-bold">
+                {myTarget.placementsCount}
+                <span className="font-normal text-muted-foreground">/{myTarget.target.placementTarget}</span>
+              </span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-border">
+              <div
+                className={`h-2 rounded-full transition-all ${myTarget.placementProgress >= 100 ? 'bg-green-500' : 'bg-yellow-400'}`}
+                style={{ width: `${myTarget.placementProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Candidates */}
       <div>

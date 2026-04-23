@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Users,
   UserRound,
+  Target,
   Settings,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/employees", label: "Employees", icon: Users },
   { href: "/admin/candidates", label: "Candidates", icon: UserRound },
+  { href: "/admin/targets", label: "Targets", icon: Target },
   { href: "/admin/resume-studio", label: "Resume Studio", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
@@ -37,6 +39,7 @@ export function AdminSidebar() {
   return (
     <>
       <button
+        type="button"
         className="fixed left-4 top-4 z-50 rounded-md bg-primary p-2 text-primary-foreground shadow-lg lg:hidden"
         onClick={() => setMobileOpen((prev) => !prev)}
         aria-label="Toggle admin sidebar"
@@ -71,10 +74,11 @@ export function AdminSidebar() {
           {navItems.map((item) => {
             const isEmployees = item.label === "Employees" && pathname.startsWith("/admin/employees");
             const isCandidates = item.label === "Candidates" && pathname.startsWith("/admin/candidates");
+            const isTargets = item.label === "Targets" && pathname.startsWith("/admin/targets");
             const isResumeStudio = item.label === "Resume Studio" && pathname.startsWith("/admin/resume-studio");
             const isDashboard = item.label === "Dashboard" && pathname === "/admin";
             const isSettings = item.label === "Settings" && pathname === "/admin/settings";
-            const isActive = isEmployees || isCandidates || isResumeStudio || isDashboard || isSettings;
+            const isActive = isEmployees || isCandidates || isTargets || isResumeStudio || isDashboard || isSettings;
             return (
               <Link
                 key={item.label}
@@ -96,6 +100,7 @@ export function AdminSidebar() {
 
         <div className="border-t border-white/10 p-3">
           <button
+            type="button"
             onClick={handleLogout}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
           >

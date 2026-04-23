@@ -77,10 +77,13 @@ model Recruiter {
   calendarConnected   Boolean     @default(false)
   // Notification preferences
   reminderTiming      Int         @default(60) // minutes before round
+  submissionTarget    Int?
+  placementTarget     Int?
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
   candidates          Candidate[]
   optimizedResumes    OptimizedResume[]
+  targets             RecruiterTarget[]
 
   @@index([role])
 }
@@ -128,6 +131,8 @@ model Application {
   candidateId     String
   resumeUsedUrl   String?
   resumeUsedLabel String?
+  submittedBy     String?
+  submittedByName String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
@@ -187,4 +192,18 @@ model OptimizedResume {
 
   @@index([candidateId])
   @@index([recruiterId])
+}
+
+model RecruiterTarget {
+  id                String    @id @default(cuid())
+  recruiterId       String
+  recruiter         Recruiter @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  month             Int
+  year              Int
+  applicationTarget Int       @default(0)
+  placementTarget   Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([recruiterId, month, year])
 }

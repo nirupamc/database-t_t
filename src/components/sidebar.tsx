@@ -34,6 +34,7 @@ export function Sidebar() {
     <>
       {/* Mobile toggle */}
       <button
+        type="button"
         className="fixed top-4 left-4 z-50 lg:hidden rounded-md bg-primary p-2 text-primary-foreground shadow-lg"
         onClick={() => setMobileOpen(!mobileOpen)}
         aria-label="Toggle sidebar"
@@ -52,7 +53,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-[hsl(var(--sidebar))] text-[hsl(var(--sidebar-foreground))] transition-transform duration-200 lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-sidebar text-sidebar-foreground transition-transform duration-200 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -76,7 +77,7 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-[hsl(var(--sidebar-active))] text-white"
+                    ? "bg-sidebar-active text-white"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 )}
               >
