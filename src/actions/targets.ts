@@ -1,6 +1,7 @@
 'use server'
 
 import { auth } from "@/lib/auth"
+import { parseUtcDateKey, toUtcDateKey } from "@/lib/week-utils"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 
@@ -12,10 +13,69 @@ const targetSchema = z.object({
   placementTarget: z.number().min(0).max(1000),
 })
 
+const weeklyTargetSchema = z.object({
+  weekStartDate: z.string(),
+  applicationTarget: z.number().min(0).max(1000).nullable().optional(),
+  placementTarget: z.number().min(0).max(1000).nullable().optional(),
+})
+
+const setTargetSchema = targetSchema.extend({
+  weeklyTargets: z.array(weeklyTargetSchema).optional(),
+})
+
+type TargetsView = "month" | "week"
+
+type GetTargetsOptions = {
+  month: number
+  year: number
+  view?: TargetsView
+  weekStartDate?: string
+}
+
+function getUtcMonthRange(month: number, year: number) {
+  return {
+    start: new Date(Date.UTC(year, month - 1, 1)),
+    end: new Date(Date.UTC(year, month, 1)),
+  }
+}
+
 function getMonthRange(month: number, year: number) {
   return {
     start: new Date(year, month - 1, 1),
     end: new Date(year, month, 1),
+  }
+}
+
+function getUtcWeekRangeFromStart(weekStartDate: string) {
+  const start = parseUtcDateKey(weekStartDate)
+  const end = new Date(start)
+  end.setUTCDate(end.getUTCDate() + 7)
+  return { start, end }
+}
+
+function getIsoWeekNumberFromWeekStart(weekStart: Date): number {
+  const thursday = new Date(weekStart)
+  thursday.setUTCDate(thursday.getUTCDate() + 3)
+  const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4))
+  const day = firstThursday.getUTCDay()
+  const offset = (day + 6) % 7
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - offset + 3)
+  const diff = thursday.getTime() - firstThursday.getTime()
+  return 1 + Math.floor(diff / (7 * 24 * 60 * 60 * 1000))
+}
+
+function resolveGetTargetsOptions(input: number | GetTargetsOptions, yearArg?: number): GetTargetsOptions {
+  if (typeof input === "number") {
+    if (!yearArg) {
+      throw new Error("Year is required when using numeric getTargetsAction arguments")
+    }
+    return { month: input, year: yearArg, view: "month" }
+  }
+  return {
+    month: input.month,
+    year: input.year,
+    view: input.view ?? "month",
+    weekStartDate: input.weekStartDate,
   }
 }
 
@@ -25,6 +85,11 @@ export async function setRecruiterTargetAction(payload: {
   year: number
   applicationTarget: number
   placementTarget: number
+  weeklyTargets?: Array<{
+    weekStartDate: string
+    applicationTarget?: number | null
+    placementTarget?: number | null
+  }>
 }) {
   console.log("[SetTarget] payload:", payload)
 
@@ -34,35 +99,82 @@ export async function setRecruiterTargetAction(payload: {
     throw new Error("Only admins can set targets")
   }
 
-  const data = targetSchema.parse(payload)
+  const data = setTargetSchema.parse(payload)
 
-  const target = await prisma.recruiterTarget.upsert({
-    where: {
-      recruiterId_month_year: {
+  const result = await prisma.$transaction(async (tx) => {
+    const target = await tx.recruiterTarget.upsert({
+      where: {
+        recruiterId_month_year: {
+          recruiterId: data.recruiterId,
+          month: data.month,
+          year: data.year,
+        },
+      },
+      update: {
+        applicationTarget: data.applicationTarget,
+        placementTarget: data.placementTarget,
+      },
+      create: {
         recruiterId: data.recruiterId,
         month: data.month,
         year: data.year,
+        applicationTarget: data.applicationTarget,
+        placementTarget: data.placementTarget,
       },
-    },
-    update: {
-      applicationTarget: data.applicationTarget,
-      placementTarget: data.placementTarget,
-    },
-    create: {
-      recruiterId: data.recruiterId,
-      month: data.month,
-      year: data.year,
-      applicationTarget: data.applicationTarget,
-      placementTarget: data.placementTarget,
-    },
+    })
+
+    if (data.weeklyTargets?.length) {
+      for (const weekly of data.weeklyTargets) {
+        const weekStart = parseUtcDateKey(weekly.weekStartDate)
+        const applicationTarget = weekly.applicationTarget ?? null
+        const placementTarget = weekly.placementTarget ?? null
+
+        if (applicationTarget === null && placementTarget === null) {
+          await tx.recruiterWeeklyTarget.deleteMany({
+            where: {
+              recruiterId: data.recruiterId,
+              weekStartDate: weekStart,
+            },
+          })
+          continue
+        }
+
+        await tx.recruiterWeeklyTarget.upsert({
+          where: {
+            recruiterId_weekStartDate: {
+              recruiterId: data.recruiterId,
+              weekStartDate: weekStart,
+            },
+          },
+          update: {
+            applicationTarget,
+            placementTarget,
+            year: weekStart.getUTCFullYear(),
+            weekNumber: getIsoWeekNumberFromWeekStart(weekStart),
+          },
+          create: {
+            recruiterId: data.recruiterId,
+            weekStartDate: weekStart,
+            applicationTarget,
+            placementTarget,
+            year: weekStart.getUTCFullYear(),
+            weekNumber: getIsoWeekNumberFromWeekStart(weekStart),
+          },
+        })
+      }
+    }
+
+    return target
   })
 
-  console.log("[SetTarget] saved target:", target.id)
-  return { success: true, target }
+  console.log("[SetTarget] saved target:", result.id)
+  return { success: true, target: result }
 }
 
-export async function getTargetsAction(month: number, year: number) {
-  console.log("[GetTargets] month/year:", month, year)
+export async function getTargetsAction(input: number | GetTargetsOptions, yearArg?: number) {
+  const options = resolveGetTargetsOptions(input, yearArg)
+  const view = options.view ?? "month"
+  console.log("[GetTargets] params:", options)
 
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
@@ -70,7 +182,11 @@ export async function getTargetsAction(month: number, year: number) {
     throw new Error("Unauthorized")
   }
 
-  const { start, end } = getMonthRange(month, year)
+  const { start: monthStart, end: monthEnd } = getUtcMonthRange(options.month, options.year)
+  const hasWeekRange = view === "week" && !!options.weekStartDate
+  const weekRange = hasWeekRange ? getUtcWeekRangeFromStart(options.weekStartDate as string) : null
+  const activeStart = weekRange?.start ?? monthStart
+  const activeEnd = weekRange?.end ?? monthEnd
 
   const recruiters = await prisma.recruiter.findMany({
     where: { role: "RECRUITER" },
@@ -80,15 +196,23 @@ export async function getTargetsAction(month: number, year: number) {
       email: true,
       profilePhotoUrl: true,
       targets: {
-        where: { month, year },
+        where: { month: options.month, year: options.year },
+      },
+      weeklyTargets: {
+        where: {
+          weekStartDate: {
+            gte: monthStart,
+            lt: monthEnd,
+          },
+        },
       },
       candidates: {
         select: {
           applications: {
             where: {
               createdAt: {
-                gte: start,
-                lt: end,
+                gte: activeStart,
+                lt: activeEnd,
               },
             },
             select: {
@@ -104,16 +228,22 @@ export async function getTargetsAction(month: number, year: number) {
 
   return recruiters.map((recruiter) => {
     const target = recruiter.targets[0] ?? null
+    const weeklyTarget = hasWeekRange
+      ? recruiter.weeklyTargets.find((item) => weekRange && item.weekStartDate.getTime() === weekRange.start.getTime()) ?? null
+      : recruiter.weeklyTargets[0] ?? null
     const allApplications = recruiter.candidates.flatMap((candidate) => candidate.applications)
     const applicationsCount = allApplications.length
     const placementsCount = allApplications.filter((application) => application.status === "PLACED").length
 
-    const applicationProgress = target?.applicationTarget
-      ? Math.round((applicationsCount / target.applicationTarget) * 100)
+    const activeApplicationTarget = view === "week" ? weeklyTarget?.applicationTarget ?? null : target?.applicationTarget ?? null
+    const activePlacementTarget = view === "week" ? weeklyTarget?.placementTarget ?? null : target?.placementTarget ?? null
+
+    const applicationProgress = activeApplicationTarget
+      ? Math.round((applicationsCount / activeApplicationTarget) * 100)
       : 0
 
-    const placementProgress = target?.placementTarget
-      ? Math.round((placementsCount / target.placementTarget) * 100)
+    const placementProgress = activePlacementTarget
+      ? Math.round((placementsCount / activePlacementTarget) * 100)
       : 0
 
     return {
@@ -122,25 +252,35 @@ export async function getTargetsAction(month: number, year: number) {
       email: recruiter.email,
       profilePhotoUrl: recruiter.profilePhotoUrl,
       target,
+      weeklyTarget,
+      view,
+      activeApplicationTarget,
+      activePlacementTarget,
+      weeklyTargets: recruiter.weeklyTargets.map((item) => ({
+        weekStartDate: toUtcDateKey(item.weekStartDate),
+        applicationTarget: item.applicationTarget,
+        placementTarget: item.placementTarget,
+      })),
       applicationsCount,
       placementsCount,
       applicationProgress: Math.min(applicationProgress, 100),
       placementProgress: Math.min(placementProgress, 100),
-      applicationsMet: target ? applicationsCount >= target.applicationTarget : false,
-      placementsMet: target ? placementsCount >= target.placementTarget : false,
+      applicationsMet: activeApplicationTarget ? applicationsCount >= activeApplicationTarget : false,
+      placementsMet: activePlacementTarget ? placementsCount >= activePlacementTarget : false,
     }
   })
 }
 
-export async function getMyTargetAction(month: number, year: number) {
+export async function getMyTargetAction(month: number, year: number, weekStartDate?: string) {
   console.log("[GetMyTarget] month/year:", month, year)
 
   const session = await auth()
   if (!session?.user?.id) throw new Error("Unauthorized")
 
   const { start, end } = getMonthRange(month, year)
+  const weekRange = weekStartDate ? getUtcWeekRangeFromStart(weekStartDate) : null
 
-  const [target, applications, placements] = await Promise.all([
+  const [target, weeklyTarget, applications, placements, weeklyApplications, weeklyPlacements] = await Promise.all([
     prisma.recruiterTarget.findUnique({
       where: {
         recruiterId_month_year: {
@@ -150,6 +290,16 @@ export async function getMyTargetAction(month: number, year: number) {
         },
       },
     }),
+    weekRange
+      ? prisma.recruiterWeeklyTarget.findUnique({
+          where: {
+            recruiterId_weekStartDate: {
+              recruiterId: session.user.id,
+              weekStartDate: weekRange.start,
+            },
+          },
+        })
+      : Promise.resolve(null),
     prisma.application.count({
       where: {
         createdAt: { gte: start, lt: end },
@@ -163,6 +313,23 @@ export async function getMyTargetAction(month: number, year: number) {
         candidate: { recruiterId: session.user.id },
       },
     }),
+    weekRange
+      ? prisma.application.count({
+          where: {
+            createdAt: { gte: weekRange.start, lt: weekRange.end },
+            candidate: { recruiterId: session.user.id },
+          },
+        })
+      : Promise.resolve(0),
+    weekRange
+      ? prisma.application.count({
+          where: {
+            createdAt: { gte: weekRange.start, lt: weekRange.end },
+            status: "PLACED",
+            candidate: { recruiterId: session.user.id },
+          },
+        })
+      : Promise.resolve(0),
   ])
 
   return {
@@ -174,6 +341,15 @@ export async function getMyTargetAction(month: number, year: number) {
       : 0,
     placementProgress: target?.placementTarget
       ? Math.min(Math.round((placements / target.placementTarget) * 100), 100)
+      : 0,
+    weeklyTarget,
+    weeklyApplicationsCount: weeklyApplications,
+    weeklyPlacementsCount: weeklyPlacements,
+    weeklyApplicationProgress: weeklyTarget?.applicationTarget
+      ? Math.min(Math.round((weeklyApplications / weeklyTarget.applicationTarget) * 100), 100)
+      : 0,
+    weeklyPlacementProgress: weeklyTarget?.placementTarget
+      ? Math.min(Math.round((weeklyPlacements / weeklyTarget.placementTarget) * 100), 100)
       : 0,
   }
 }

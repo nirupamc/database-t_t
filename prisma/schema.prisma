@@ -84,6 +84,7 @@ model Recruiter {
   candidates          Candidate[]
   optimizedResumes    OptimizedResume[]
   targets             RecruiterTarget[]
+  weeklyTargets       RecruiterWeeklyTarget[]
 
   @@index([role])
 }
@@ -206,4 +207,20 @@ model RecruiterTarget {
   updatedAt         DateTime  @updatedAt
 
   @@unique([recruiterId, month, year])
+}
+
+model RecruiterWeeklyTarget {
+  id                String    @id @default(cuid())
+  recruiterId       String
+  recruiter         Recruiter @relation(fields: [recruiterId], references: [id], onDelete: Cascade)
+  weekStartDate     DateTime
+  year              Int
+  weekNumber        Int
+  applicationTarget Int?
+  placementTarget   Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([recruiterId, weekStartDate])
+  @@index([year, weekNumber])
 }

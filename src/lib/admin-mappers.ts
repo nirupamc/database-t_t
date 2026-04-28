@@ -103,7 +103,7 @@ type CandidateWithRelations = {
   fullName: string;
   email: string;
   phone: string;
-  personalLinkedIn: string;
+  personalLinkedIn: string | null;
   profilePhotoUrl: string | null;
   resumeUrl: string | null;
   skills: string[];
@@ -219,7 +219,7 @@ export function mapCandidateToAdminView(candidate: CandidateWithRelations): Admi
     title: candidate.skills[0] ? `${candidate.skills[0]} Specialist` : formatEnum(candidate.status),
     email: candidate.email,
     phone: candidate.phone,
-    linkedInUrl: candidate.personalLinkedIn,
+    linkedInUrl: candidate.personalLinkedIn ?? "",
     avatarUrl: candidate.profilePhotoUrl ?? undefined,
     assignedRecruiter: candidate.recruiter.name,
     recruiterId: candidate.recruiterId,
@@ -330,7 +330,14 @@ export function mapRecruiterToAdminView(recruiter: RecruiterWithRelations): Admi
     role: recruiter.role === "ADMIN" ? "Admin" : "Recruiter",
     imageUrl: recruiter.profilePhotoUrl ?? undefined,
     lastActivityDate: formatDate(recruiter.updatedAt),
-    assignedCandidates: assignedCandidates.map(({ activeApplications: _activeApplications, interviewsScheduled: _interviewsScheduled, offersExtended: _offersExtended, placements: _placements, ...candidate }) => candidate),
+    assignedCandidates: assignedCandidates.map(({ id, name, email, currentProfileStatus, totalApplications, nextRoundDate }) => ({
+      id,
+      name,
+      email,
+      currentProfileStatus,
+      totalApplications,
+      nextRoundDate,
+    })),
     performance,
   };
 }

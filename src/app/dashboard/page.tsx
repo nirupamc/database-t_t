@@ -2,9 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { CandidateCards } from "@/components/dashboard/candidate-cards";
+import { GoalPanel } from "@/components/dashboard/goal-panel";
 import { getCurrentSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getMyTargetAction } from "@/actions/targets";
@@ -81,7 +81,6 @@ export default async function DashboardPage() {
     interviewsNote: interviewsThisWeek > 0 ? "Upcoming interview rounds scheduled" : "No interviews scheduled",
     offersPending: pendingOffers,
     offersNote: pendingOffers > 0 ? "Offers awaiting candidate response" : "No pending offers",
-    goalProgress: Math.min(100, Math.round((applications.length / 25) * 100)),
   };
 
   const recentCandidates = candidates.map((candidate) => ({
@@ -172,16 +171,7 @@ export default async function DashboardPage() {
         <CandidateCards candidates={recentCandidates} />
       </div>
 
-      {/* Current Goal progress */}
-      <div className="fixed bottom-6 left-6 lg:left-70 w-44 rounded-xl border bg-card p-4 shadow-lg">
-        <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">
-          Current Goal
-        </p>
-        <Progress value={dashboardStats.goalProgress} className="h-2 mb-1" />
-        <p className="text-xs text-muted-foreground">
-          {dashboardStats.goalProgress}% of monthly target met
-        </p>
-      </div>
+      <GoalPanel />
 
       {/* Floating + button */}
       <Button
