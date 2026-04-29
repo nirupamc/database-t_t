@@ -54,6 +54,16 @@ interface SnapshotWindow {
   snapshotEndExclusive: Date
 }
 
+function startOfUtcDay(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+}
+
+function clampUtcDate(date: Date, minDate: Date, maxDate: Date) {
+  if (date < minDate) return minDate
+  if (date > maxDate) return maxDate
+  return date
+}
+
 function buildUtcDailyRange(start: Date, end: Date) {
   const keys: string[] = []
   const cursor = new Date(start)
@@ -88,7 +98,23 @@ function resolveWeekStartDate(queryValue: string | null) {
   }
 }
 
-function resolveSnapshotWindow(weekStart: Date, weekEnd: Date): SnapshotWindow {
+function resolveSnapshotWindow(weekStart: Date, weekEnd: Date, snapshotDateQuery: string | null): SnapshotWindow {
+  if (snapshotDateQuery) {
+    try {
+      const minSnapshotDate = startOfUtcDay(APP_LAUNCH_DATE)
+      const maxSnapshotDate = startOfUtcDay(new Date())
+      const requestedSnapshotDate = parseUtcDateKey(snapshotDateQuery)
+      const clampedSnapshotDate = clampUtcDate(requestedSnapshotDate, minSnapshotDate, maxSnapshotDate)
+      const snapshotDay = getUtcDayRange(clampedSnapshotDate)
+      return {
+        snapshotDate: toUtcDateKey(snapshotDay.start),
+        snapshotEndExclusive: snapshotDay.end,
+      }
+    } catch {
+      // Fall through to existing week-based snapshot behavior.
+    }
+  }
+
   const currentWeekStart = startOfCurrentUtcWeek()
 
   if (weekStart.getTime() === currentWeekStart.getTime()) {
@@ -420,7 +446,11 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const weekStart = resolveWeekStartDate(searchParams.get("weekStart"))
   const { start: resolvedWeekStart, end: resolvedWeekEnd } = getUtcWeekRange(weekStart)
-  const { snapshotDate, snapshotEndExclusive } = resolveSnapshotWindow(resolvedWeekStart, resolvedWeekEnd)
+  const { snapshotDate, snapshotEndExclusive } = resolveSnapshotWindow(
+    resolvedWeekStart,
+    resolvedWeekEnd,
+    searchParams.get("snapshotDate")
+  )
 
   const [
     employeeCount,

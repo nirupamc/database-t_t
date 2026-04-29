@@ -120,6 +120,26 @@ function bubbleSize(count: number) {
   return Math.max(1, count)
 }
 
+function startOfUtcDay(date: Date) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+}
+
+function shiftUtcDay(date: Date, offsetDays: number) {
+  const next = new Date(date)
+  next.setUTCDate(next.getUTCDate() + offsetDays)
+  return next
+}
+
+function clampUtcDate(date: Date, minDate: Date, maxDate: Date) {
+  if (date < minDate) return minDate
+  if (date > maxDate) return maxDate
+  return date
+}
+
+function formatDayLabel(value: Date) {
+  return value.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
+}
+
 function WeekHeader() {
   const { weekStart, setWeekStart, minWeekStart, maxWeekStart } = useDashboardWeek()
   const weekLabel = formatWeekLabel(weekStart)
@@ -157,6 +177,8 @@ function WeekHeader() {
 export function AdminDashboardChartsLayer() {
   const minWeekStart = useMemo(() => getUtcWeekRange(APP_LAUNCH_DATE).start, [])
   const maxWeekStart = useMemo(() => startOfCurrentUtcWeek(), [])
+  const minSnapshotDate = useMemo(() => startOfUtcDay(APP_LAUNCH_DATE), [])
+  const maxSnapshotDate = useMemo(() => startOfUtcDay(new Date()), [])
 
   const [weekStart, setWeekStartState] = useState<Date>(maxWeekStart)
   const [chartData, setChartData] = useState<DashboardChartPayload | null>(null)
@@ -165,6 +187,7 @@ export function AdminDashboardChartsLayer() {
 
   const [popupKey, setPopupKey] = useState<PopupKey>(null)
   const [popupWeekByKey, setPopupWeekByKey] = useState<Partial<Record<Exclude<PopupKey, null>, string>>>({})
+  const [popupSnapshotDateByKey, setPopupSnapshotDateByKey] = useState<Partial<Record<Exclude<PopupKey, null>, string>>>({})
   const [popupData, setPopupData] = useState<DashboardChartPayload | null>(null)
   const [popupLoading, setPopupLoading] = useState(false)
 
@@ -175,9 +198,12 @@ export function AdminDashboardChartsLayer() {
     [maxWeekStart, minWeekStart]
   )
 
-  const loadCharts = useCallback(async (date: Date) => {
+  const loadCharts = useCallback(async (date: Date, snapshotDate?: Date) => {
     const weekKey = toUtcDateKey(date)
-    const response = await fetch(`/api/admin/dashboard-charts?weekStart=${weekKey}`, { cache: "no-store" })
+    const query = snapshotDate
+      ? `/api/admin/dashboard-charts?weekStart=${weekKey}&snapshotDate=${toUtcDateKey(snapshotDate)}`
+      : `/api/admin/dashboard-charts?weekStart=${weekKey}`
+    const response = await fetch(query, { cache: "no-store" })
     if (!response.ok) {
       throw new Error("Failed to load dashboard charts")
     }
@@ -227,6 +253,12 @@ export function AdminDashboardChartsLayer() {
     return weekKey ? parseUtcDateKey(weekKey) : weekStart
   }, [popupKey, popupWeekByKey, weekStart])
 
+  const popupSnapshotDate = useMemo(() => {
+    if (!popupKey) return null
+    const snapshotKey = popupSnapshotDateByKey[popupKey]
+    return snapshotKey ? parseUtcDateKey(snapshotKey) : null
+  }, [popupKey, popupSnapshotDateByKey])
+
   useEffect(() => {
     if (!popupKey || !popupWeekStart) {
       return
@@ -236,7 +268,7 @@ export function AdminDashboardChartsLayer() {
     async function run() {
       try {
         setPopupLoading(true)
-        const data = await loadCharts(popupWeekStart)
+        const data = await loadCharts(popupWeekStart, popupKey === "candidate-leaderboard" ? popupSnapshotDate ?? undefined : undefined)
         if (!active) return
         setPopupData(data)
       } catch {
@@ -253,13 +285,19 @@ export function AdminDashboardChartsLayer() {
     return () => {
       active = false
     }
-  }, [loadCharts, popupKey, popupWeekStart])
+  }, [loadCharts, popupKey, popupSnapshotDate, popupWeekStart])
 
   const openPopup = (key: Exclude<PopupKey, null>) => {
     setPopupWeekByKey((prev) => {
       if (prev[key]) return prev
       return { ...prev, [key]: toUtcDateKey(weekStart) }
     })
+    if (key === "candidate-leaderboard") {
+      setPopupSnapshotDateByKey((prev) => {
+        if (prev[key]) return prev
+        return { ...prev, [key]: activeData?.snapshotDate ?? toUtcDateKey(maxSnapshotDate) }
+      })
+    }
     setPopupKey(key)
   }
 
@@ -312,6 +350,28 @@ export function AdminDashboardChartsLayer() {
   const candidateLeaderboardTotal = useMemo(
     () => candidateLeaderboardData.reduce((sum, point) => sum + point.count, 0),
     [candidateLeaderboardData]
+  )
+
+  const popupCandidateLeaderboardData = useMemo(() => {
+    if (!popupData) return []
+    return [...popupData.candidateSubmissionLeaderboard].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [popupData])
+
+  const popupCandidateLeaderboardBubbleData = useMemo<BubblePoint[]>(() => {
+    return popupCandidateLeaderboardData.slice(0, 8).map((point, index) => ({
+      ...point,
+      rank: index + 1,
+      x: index + 1,
+      y: point.count,
+      size: bubbleSize(point.count),
+      fill: PIE_COLORS[index % PIE_COLORS.length],
+    }))
+  }, [popupCandidateLeaderboardData])
+
+  const popupCandidateLeaderboardPeak = popupCandidateLeaderboardData[0]
+  const popupCandidateLeaderboardTotal = useMemo(
+    () => popupCandidateLeaderboardData.reduce((sum, point) => sum + point.count, 0),
+    [popupCandidateLeaderboardData]
   )
 
   const averageDailyApps = useMemo(() => {
@@ -601,29 +661,63 @@ export function AdminDashboardChartsLayer() {
               <button
                 type="button"
                 onClick={() => {
+                  if (popupKey === "candidate-leaderboard") {
+                    const currentDate = popupSnapshotDate ?? maxSnapshotDate
+                    const nextDate = clampUtcDate(shiftUtcDay(currentDate, -1), minSnapshotDate, maxSnapshotDate)
+                    setPopupSnapshotDateByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(nextDate) }))
+                    const nextWeekStart = getUtcWeekRange(nextDate).start
+                    setPopupWeekByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(nextWeekStart) }))
+                    return
+                  }
+
                   const next = clampWeekStart(shiftUtcWeek(popupWeekStart, -1), minWeekStart, maxWeekStart)
                   setPopupWeekByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(next) }))
                 }}
-                disabled={popupWeekStart.getTime() === minWeekStart.getTime()}
+                disabled={
+                  popupKey === "candidate-leaderboard"
+                    ? (popupSnapshotDate ?? maxSnapshotDate).getTime() === minSnapshotDate.getTime()
+                    : popupWeekStart.getTime() === minWeekStart.getTime()
+                }
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2d3a] bg-[#242730] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <p className="text-sm font-medium text-foreground">{formatWeekLabel(popupWeekStart)}</p>
+              <p className="text-sm font-medium text-foreground">
+                {popupKey === "candidate-leaderboard"
+                  ? formatDayLabel(popupSnapshotDate ?? maxSnapshotDate)
+                  : formatWeekLabel(popupWeekStart)}
+              </p>
               <button
                 type="button"
                 onClick={() => {
+                  if (popupKey === "candidate-leaderboard") {
+                    const currentDate = popupSnapshotDate ?? maxSnapshotDate
+                    const nextDate = clampUtcDate(shiftUtcDay(currentDate, 1), minSnapshotDate, maxSnapshotDate)
+                    setPopupSnapshotDateByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(nextDate) }))
+                    const nextWeekStart = getUtcWeekRange(nextDate).start
+                    setPopupWeekByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(nextWeekStart) }))
+                    return
+                  }
+
                   const next = clampWeekStart(shiftUtcWeek(popupWeekStart, 1), minWeekStart, maxWeekStart)
                   setPopupWeekByKey((prev) => ({ ...prev, [popupKey]: toUtcDateKey(next) }))
                 }}
-                disabled={popupWeekStart.getTime() === maxWeekStart.getTime()}
+                disabled={
+                  popupKey === "candidate-leaderboard"
+                    ? (popupSnapshotDate ?? maxSnapshotDate).getTime() === maxSnapshotDate.getTime()
+                    : popupWeekStart.getTime() === maxWeekStart.getTime()
+                }
                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#2a2d3a] bg-[#242730] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
 
-            {popupLoading && <p className="mb-4 text-sm text-muted-foreground">Loading week data...</p>}
+            {popupLoading && (
+              <p className="mb-4 text-sm text-muted-foreground">
+                {popupKey === "candidate-leaderboard" ? "Loading day data..." : "Loading week data..."}
+              </p>
+            )}
 
             {popupData && (
               <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -805,11 +899,11 @@ export function AdminDashboardChartsLayer() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-lg border border-[#2a2d3a] p-3">
                       <p className="text-xs text-muted-foreground">Total submissions</p>
-                      <p className="text-xl font-bold">{candidateLeaderboardTotal}</p>
+                      <p className="text-xl font-bold">{popupCandidateLeaderboardTotal}</p>
                     </div>
                     <div className="rounded-lg border border-[#2a2d3a] p-3">
                       <p className="text-xs text-muted-foreground">Ranked employees</p>
-                      <p className="text-xl font-bold">{candidateLeaderboardData.length}</p>
+                      <p className="text-xl font-bold">{popupCandidateLeaderboardData.length}</p>
                     </div>
                     <div className="rounded-lg border border-[#2a2d3a] p-3">
                       <p className="text-xs text-muted-foreground">Snapshot day</p>
@@ -822,16 +916,16 @@ export function AdminDashboardChartsLayer() {
                       <ResponsiveContainer width="100%" height="100%">
                         <ScatterChart margin={{ top: 16, right: 16, bottom: 16, left: 16 }}>
                           <CartesianGrid stroke="rgba(255,255,255,0.05)" />
-                          <XAxis dataKey="x" type="number" hide domain={[1, Math.max(candidateLeaderboardBubbleData.length, 1)]} />
-                          <YAxis dataKey="y" type="number" hide domain={[0, Math.max(candidateLeaderboardPeak?.count ?? 1, 1)]} />
+                          <XAxis dataKey="x" type="number" hide domain={[1, Math.max(popupCandidateLeaderboardBubbleData.length, 1)]} />
+                          <YAxis dataKey="y" type="number" hide domain={[0, Math.max(popupCandidateLeaderboardPeak?.count ?? 1, 1)]} />
                           <ZAxis dataKey="size" range={[120, 1300]} />
                           <Tooltip
                             contentStyle={{ backgroundColor: "#1a1d27", border: "1px solid #2a2d3a", color: "#f0f0f0" }}
                             labelStyle={{ color: "#f0f0f0" }}
                             formatter={(value: number) => [value, "Submissions"]}
                           />
-                          <Scatter data={candidateLeaderboardBubbleData}>
-                            {candidateLeaderboardBubbleData.map((point) => (
+                          <Scatter data={popupCandidateLeaderboardBubbleData}>
+                            {popupCandidateLeaderboardBubbleData.map((point) => (
                               <Cell key={point.name} fill={point.fill} />
                             ))}
                           </Scatter>
@@ -840,7 +934,7 @@ export function AdminDashboardChartsLayer() {
                     </div>
 
                     <div className="space-y-2 overflow-y-auto pr-1">
-                      {candidateLeaderboardBubbleData.map((item) => (
+                      {popupCandidateLeaderboardBubbleData.map((item) => (
                         <div key={item.name} className="flex items-center justify-between rounded-md border border-[#1f2937] bg-[#0f172a] px-4 py-3">
                           <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold text-slate-950" style={{ backgroundColor: item.fill }}>
