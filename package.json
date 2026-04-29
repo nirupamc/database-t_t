@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "prisma migrate deploy && prisma generate && next dev",
-    "build": "prisma migrate deploy && prisma generate && next build",
+    "dev": "prisma generate && next dev",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy && prisma generate",
     "prisma:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
