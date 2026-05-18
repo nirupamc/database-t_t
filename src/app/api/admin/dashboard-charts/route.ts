@@ -203,39 +203,38 @@ async function getCandidateSubmissionLeaderboard(snapshotDate: string, snapshotE
   try {
     const { start: snapshotStart } = getUtcDayRange(parseUtcDateKey(snapshotDate))
 
-    const applications = await prisma.application.findMany({
+    const recruiters = await prisma.recruiter.findMany({
       where: {
+        role: "RECRUITER",
         createdAt: {
-          gte: snapshotStart,
           lt: snapshotEndExclusive,
         },
       },
       select: {
-        submittedByName: true,
-        submittedBy: true,
-        candidate: {
+        name: true,
+        candidates: {
           select: {
-            recruiter: {
-              select: {
-                name: true,
+            applications: {
+              where: {
+                createdAt: {
+                  gte: snapshotStart,
+                  lt: snapshotEndExclusive,
+                },
               },
+              select: { id: true },
             },
           },
         },
       },
+      orderBy: { name: "asc" },
     })
 
-    const counts = new Map<string, number>()
-    for (const application of applications) {
-      const submitterName = application.submittedByName?.trim() || application.submittedBy?.trim() || application.candidate.recruiter.name.trim()
-      if (!submitterName) {
-        continue
-      }
-      counts.set(submitterName, (counts.get(submitterName) ?? 0) + 1)
-    }
-
-    return Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
+    return recruiters
+      .map((recruiter) => ({
+        name: recruiter.name,
+        count: recruiter.candidates.reduce((sum, candidate) => sum + candidate.applications.length, 0),
+      }))
+      .filter((entry) => entry.count > 0)
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
   } catch (error) {
     console.error("[dashboard-charts] getCandidateSubmissionLeaderboard failed:", error)

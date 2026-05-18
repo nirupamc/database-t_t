@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { Bell, LogOut, Settings } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { SearchInput } from "@/components/search/search-input";
+import { useSearch } from "@/components/search/search-provider";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +20,7 @@ import {
 export function TopBar() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { openSearch } = useSearch();
   const name = session?.user?.name ?? "Recruiter";
   const initials = name
     .split(" ")
@@ -35,7 +38,7 @@ export function TopBar() {
       {/* Left spacer for mobile toggle */}
       <div className="w-10 lg:hidden" />
 
-      {/* Welcome text */}
+      {/* Welcome text or Search on mobile */}
       <div className="hidden lg:block">
         <p className="text-sm text-muted-foreground">
           Welcome,{" "}
@@ -43,6 +46,11 @@ export function TopBar() {
             {name.split(" ")[0]}
           </span>
         </p>
+      </div>
+
+      {/* Search input - visible on all sizes */}
+      <div className="flex-1 px-4 hidden sm:block">
+        <SearchInput onClick={openSearch} />
       </div>
 
       {/* Right side actions */}

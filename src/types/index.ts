@@ -28,6 +28,8 @@ export type InterviewMode =
 
 /** Round type */
 export type RoundType =
+  | "Round 1"
+  | "Round 2"
   | "Confirmation Call"
   | "HR Screen"
   | "Technical Interview"

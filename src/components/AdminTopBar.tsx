@@ -5,9 +5,12 @@ import { signOut, useSession } from "next-auth/react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/search/search-input";
+import { useSearch } from "@/components/search/search-provider";
 
 export function AdminTopBar() {
   const { data: session } = useSession();
+  const { openSearch } = useSearch();
 
   const handleLogout = () => {
     signOut({ callbackUrl: "/login" });
@@ -28,6 +31,11 @@ export function AdminTopBar() {
         <p className="text-sm text-muted-foreground">
           Welcome, <span className="font-semibold text-foreground">Admin {name.split(" ")[0]}</span>
         </p>
+      </div>
+
+      {/* Search input */}
+      <div className="flex-1 px-4 hidden sm:block">
+        <SearchInput onClick={openSearch} />
       </div>
 
       <div className="flex items-center gap-3">

@@ -38,6 +38,8 @@ import type {
 
 // ── Round type options ──
 const roundTypes: RoundType[] = [
+  "Round 1",
+  "Round 2",
   "Confirmation Call",
   "HR Screen",
   "Technical Interview",

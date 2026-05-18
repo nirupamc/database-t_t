@@ -5,6 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Toaster } from "sonner";
 import { AuthSessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SearchProvider } from "@/components/search/search-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,7 +36,9 @@ export default function RootLayout({
       >
         <AuthSessionProvider>
           <ThemeProvider>
-            {children}
+            <SearchProvider>
+              {children}
+            </SearchProvider>
             <Toaster position="bottom-right" richColors />
             <Analytics />
             <SpeedInsights />

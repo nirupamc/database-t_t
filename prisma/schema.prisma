@@ -134,6 +134,7 @@ model Application {
   resumeUsedLabel String?
   submittedBy     String?
   submittedByName String?
+  searchVector    Unsupported("tsvector")?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   candidate       Candidate         @relation(fields: [candidateId], references: [id], onDelete: Cascade)
